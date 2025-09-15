@@ -75,36 +75,36 @@ export function FiltersBar({ filters, onFiltersChange, uniqueValues }: FiltersBa
 
         {/* Quick Filters */}
         <div className="flex flex-wrap lg:flex-nowrap gap-2">
-          <Select value={filters.emailStatus} onValueChange={(value) => updateFilter('emailStatus', value)}>
+          <Select value={filters.emailStatus || "all"} onValueChange={(value) => updateFilter('emailStatus', value === "all" ? "" : value)}>
             <SelectTrigger className="w-[140px] glass border-border/30">
               <SelectValue placeholder="Email Status" />
             </SelectTrigger>
             <SelectContent className="glass-card border-border/30">
-              <SelectItem value="">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               {uniqueValues.emailStatuses.map((status) => (
                 <SelectItem key={status} value={status}>{status}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={filters.industry} onValueChange={(value) => updateFilter('industry', value)}>
+          <Select value={filters.industry || "all"} onValueChange={(value) => updateFilter('industry', value === "all" ? "" : value)}>
             <SelectTrigger className="w-[140px] glass border-border/30">
               <SelectValue placeholder="Industry" />
             </SelectTrigger>
             <SelectContent className="glass-card border-border/30">
-              <SelectItem value="">All Industries</SelectItem>
+              <SelectItem value="all">All Industries</SelectItem>
               {uniqueValues.industries.map((industry) => (
                 <SelectItem key={industry} value={industry}>{industry}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={filters.country} onValueChange={(value) => updateFilter('country', value)}>
+          <Select value={filters.country || "all"} onValueChange={(value) => updateFilter('country', value === "all" ? "" : value)}>
             <SelectTrigger className="w-[140px] glass border-border/30">
               <SelectValue placeholder="Country" />
             </SelectTrigger>
             <SelectContent className="glass-card border-border/30">
-              <SelectItem value="">All Countries</SelectItem>
+              <SelectItem value="all">All Countries</SelectItem>
               {uniqueValues.countries.map((country) => (
                 <SelectItem key={country} value={country}>{country}</SelectItem>
               ))}
