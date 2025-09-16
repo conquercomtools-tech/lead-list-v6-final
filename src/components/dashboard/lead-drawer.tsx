@@ -242,7 +242,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                       </div>
                     </div>
                     
-                    {post.summaries && post.summaries.length > 0 && (
+                    {post.summaries && Array.isArray(post.summaries) && post.summaries.length > 0 && (
                       <div className="mb-4">
                         <h4 className="font-medium mb-2">Summary</h4>
                         <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
@@ -259,7 +259,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                         View Signals
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-4 space-y-3">
-                        {post.pain_points && post.pain_points.length > 0 && (
+                        {post.pain_points && Array.isArray(post.pain_points) && post.pain_points.length > 0 && (
                           <div>
                             <h5 className="text-sm font-medium text-destructive mb-1">Pain Points</h5>
                             <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
@@ -270,7 +270,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                           </div>
                         )}
                         
-                        {post.brag_metrics && post.brag_metrics.length > 0 && (
+                        {post.brag_metrics && Array.isArray(post.brag_metrics) && post.brag_metrics.length > 0 && (
                           <div>
                             <h5 className="text-sm font-medium text-primary mb-1">Brag Metrics</h5>
                             <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
@@ -281,7 +281,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                           </div>
                         )}
                         
-                        {post.voice_phrases && post.voice_phrases.length > 0 && (
+                        {post.voice_phrases && Array.isArray(post.voice_phrases) && post.voice_phrases.length > 0 && (
                           <div>
                             <h5 className="text-sm font-medium mb-1">Voice Phrases</h5>
                             <div className="flex flex-wrap gap-1">
@@ -294,7 +294,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                           </div>
                         )}
                         
-                        {post.stated_priorities && post.stated_priorities.length > 0 && (
+                        {post.stated_priorities && Array.isArray(post.stated_priorities) && post.stated_priorities.length > 0 && (
                           <div>
                             <h5 className="text-sm font-medium mb-1">Priorities</h5>
                             <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
@@ -305,7 +305,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                           </div>
                         )}
                         
-                        {post.events_conferences && post.events_conferences.length > 0 && (
+                        {post.events_conferences && Array.isArray(post.events_conferences) && post.events_conferences.length > 0 && (
                           <div>
                             <h5 className="text-sm font-medium mb-1">Events & Conferences</h5>
                             <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
