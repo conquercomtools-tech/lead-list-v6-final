@@ -7,10 +7,17 @@ import { Button } from "@/components/ui/button";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Copy, ExternalLink, Phone, Mail, MapPin, ChevronDown, Calendar, TrendingUp, Users, DollarSign } from "lucide-react";
+import { Copy, ExternalLink, Phone, Mail, MapPin, ChevronDown, Calendar, TrendingUp, Users, DollarSign, Building } from "lucide-react";
 import { toast } from "sonner";
 import { Lead, formatCurrency, formatNumber, getCountryFlag } from "@/lib/supabase";
-import { safeJson } from "@/lib/utils";
+import { 
+  normalizeLinkedInPosts, 
+  normalizeBasicInfo, 
+  normalizeCompanyData, 
+  normalizeCompanyPosts,
+  money,
+  fmtDate
+} from "@/lib/normalize";
 
 interface LeadDrawerProps {
   lead: Lead | null;
@@ -35,23 +42,11 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   // Prepare data for display
   const fullName = [lead?.['First Name'], lead?.['Last Name']].filter(Boolean).join(' ') || 'Unknown';
   
-  // Parse JSON fields safely
-  type Post = {
-    date?: string;
-    post_type?: string;
-    summaries?: string[];
-    pain_points?: string[];
-    brag_metrics?: string[];
-    voice_phrases?: string[];
-    stated_priorities?: string[];
-    events_conferences?: string[];
-  };
-  
-  const linkedinPosts = safeJson<Post[]>(lead?.linkedin_posts, []);
-  const basicInfo = safeJson<Record<string, any>>(lead?.basic_info, {});
-  const companyLinkedinPost = safeJson<any>(lead?.company_linkedin_post, null);
-  const companyData = safeJson<Record<string, any>>(lead?.company_data, {});
-  const technologies = lead?.Technologies ? lead.Technologies.split(',').map(tech => tech.trim()).filter(Boolean) : [];
+  // Normalize JSONB fields
+  const linkedinPosts = normalizeLinkedInPosts(lead?.linkedin_posts);
+  const basicInfo = normalizeBasicInfo(lead?.basic_info);
+  const companyData = normalizeCompanyData(lead?.company_data);
+  const companyPosts = normalizeCompanyPosts(lead?.company_linkedin_post);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -222,303 +217,392 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
           </TabsContent>
 
           <TabsContent value="linkedin" className="space-y-6">
-            {linkedinPosts.length > 0 ? (
-              <div className="space-y-4">
-                {linkedinPosts.map((post, index) => (
-                  <GlassCard key={index} className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        {post.post_type && (
-                          <Badge variant="outline" className="glass">
-                            {post.post_type}
-                          </Badge>
-                        )}
-                        {post.date && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            {new Date(post.date).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {post.summaries && Array.isArray(post.summaries) && post.summaries.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="font-medium mb-2">Summary</h4>
-                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                          {post.summaries.map((summary, i) => (
-                            <li key={i}>{summary}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    <Collapsible>
-                      <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary">
-                        <ChevronDown className="h-4 w-4" />
-                        View Signals
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-4 space-y-3">
-                        {post.pain_points && Array.isArray(post.pain_points) && post.pain_points.length > 0 && (
-                          <div>
-                            <h5 className="text-sm font-medium text-destructive mb-1">Pain Points</h5>
-                            <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-                              {post.pain_points.map((point, i) => (
-                                <li key={i}>{point}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {post.brag_metrics && Array.isArray(post.brag_metrics) && post.brag_metrics.length > 0 && (
-                          <div>
-                            <h5 className="text-sm font-medium text-primary mb-1">Brag Metrics</h5>
-                            <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-                              {post.brag_metrics.map((metric, i) => (
-                                <li key={i}>{metric}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {post.voice_phrases && Array.isArray(post.voice_phrases) && post.voice_phrases.length > 0 && (
-                          <div>
-                            <h5 className="text-sm font-medium mb-1">Voice Phrases</h5>
-                            <div className="flex flex-wrap gap-1">
-                              {post.voice_phrases.map((phrase, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                  {phrase}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {post.stated_priorities && Array.isArray(post.stated_priorities) && post.stated_priorities.length > 0 && (
-                          <div>
-                            <h5 className="text-sm font-medium mb-1">Priorities</h5>
-                            <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-                              {post.stated_priorities.map((priority, i) => (
-                                <li key={i}>{priority}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {post.events_conferences && Array.isArray(post.events_conferences) && post.events_conferences.length > 0 && (
-                          <div>
-                            <h5 className="text-sm font-medium mb-1">Events & Conferences</h5>
-                            <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-                              {post.events_conferences.map((event, i) => (
-                                <li key={i}>{event}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </GlassCard>
-                ))}
-              </div>
-            ) : (
-              <GlassCard className="p-12 text-center">
-                <div className="text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">No Recent Activity</h3>
-                  <p className="text-sm">No LinkedIn posts found for this lead.</p>
-                </div>
-              </GlassCard>
-            )}
+            <LinkedInActivityTab posts={linkedinPosts} />
           </TabsContent>
 
           <TabsContent value="company" className="space-y-6">
-            {/* Basic Info */}
-            {Object.keys(basicInfo).length > 0 && (
-              <GlassCard className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {Object.entries(basicInfo).map(([key, value]) => (
-                    <div key={key} className="space-y-1">
-                      <span className="text-sm font-medium text-muted-foreground capitalize">
-                        {key.replace(/_/g, ' ')}
-                      </span>
-                      <p className="text-sm">{String(value) || 'N/A'}</p>
-                    </div>
-                  ))}
-                </div>
-              </GlassCard>
-            )}
-
-            {/* Company LinkedIn Posts */}
-            {companyLinkedinPost && (
-              <GlassCard className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Company LinkedIn Activity</h3>
-                {Array.isArray(companyLinkedinPost) ? (
-                  <div className="space-y-4">
-                    {companyLinkedinPost.slice(0, 3).map((post, index) => (
-                      <div key={index} className="p-4 rounded-lg bg-muted/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline">Company Post</Badge>
-                          {post.link && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open(post.link, '_blank')}
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {post.content || post.text || 'No content available'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-lg bg-muted/20">
-                    <p className="text-sm text-muted-foreground">
-                      {companyLinkedinPost.content || companyLinkedinPost.text || 'No content available'}
-                    </p>
-                  </div>
-                )}
-              </GlassCard>
-            )}
-
-            {/* Company Data */}
-            {Object.keys(companyData).length > 0 && (
-              <div className="space-y-6">
-                {/* Website & Socials */}
-                {(companyData.website || companyData.social_media) && (
-                  <GlassCard className="p-6">
-                    <h3 className="text-lg font-semibold mb-4">Website & Social</h3>
-                    <div className="space-y-2">
-                      {companyData.website && (
-                        <div className="flex items-center gap-2">
-                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                          <a href={companyData.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                            {companyData.website}
-                          </a>
-                        </div>
-                      )}
-                      {companyData.social_media && Object.entries(companyData.social_media).map(([platform, url]) => (
-                        <div key={platform} className="flex items-center gap-2">
-                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                          <span className="capitalize text-sm font-medium">{platform}:</span>
-                          <a href={String(url)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
-                            {String(url)}
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  </GlassCard>
-                )}
-
-                {/* Tech Stack */}
-                {companyData.technologies && (
-                  <GlassCard className="p-6">
-                    <h3 className="text-lg font-semibold mb-4">Tech Stack</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {(Array.isArray(companyData.technologies) ? companyData.technologies : [companyData.technologies]).map((tech, index) => (
-                        <Badge key={index} variant="secondary" className="glass">
-                          {tech}
-                        </Badge>
-                      ))}
-                    </div>
-                  </GlassCard>
-                )}
-
-                {/* Description */}
-                {companyData.description && (
-                  <GlassCard className="p-6">
-                    <h3 className="text-lg font-semibold mb-4">Description</h3>
-                    <p className="text-sm text-muted-foreground">{companyData.description}</p>
-                  </GlassCard>
-                )}
-
-                {/* Funding Milestones */}
-                {companyData.funding_rounds && (
-                  <GlassCard className="p-6">
-                    <h3 className="text-lg font-semibold mb-4">Funding Milestones</h3>
-                    <div className="space-y-3">
-                      {(Array.isArray(companyData.funding_rounds) ? companyData.funding_rounds : [companyData.funding_rounds]).map((round, index) => (
-                        <div key={index} className="p-3 rounded-lg bg-muted/20">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="font-medium">{round.round_type || 'Funding Round'}</span>
-                              {round.date && (
-                                <span className="text-sm text-muted-foreground ml-2">
-                                  ({new Date(round.date).toLocaleDateString()})
-                                </span>
-                              )}
-                            </div>
-                            {round.amount && (
-                              <Badge variant="outline">{formatCurrency(round.amount)}</Badge>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </GlassCard>
-                )}
-              </div>
-            )}
-
-            {/* Technologies */}
-            {technologies.length > 0 && (
-              <GlassCard className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Listed Technologies</h3>
-                <div className="flex flex-wrap gap-2">
-                  {technologies.map((tech, index) => (
-                    <Badge key={index} variant="secondary" className="glass">
-                      {tech}
-                    </Badge>
-                  ))}
-                </div>
-              </GlassCard>
-            )}
+            <CompanyTab 
+              basicInfo={basicInfo}
+              companyData={companyData}
+              companyPosts={companyPosts}
+            />
           </TabsContent>
 
           <TabsContent value="raw" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <GlassCard className="p-6">
-                <h3 className="text-lg font-semibold mb-4">LinkedIn Posts</h3>
-                <pre className="text-xs bg-muted/20 p-4 rounded-lg overflow-auto max-h-64 whitespace-pre-wrap">
-                  {JSON.stringify(lead?.linkedin_posts, null, 2)}
-                </pre>
-              </GlassCard>
-
-              <GlassCard className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Basic Info</h3>
-                <pre className="text-xs bg-muted/20 p-4 rounded-lg overflow-auto max-h-64 whitespace-pre-wrap">
-                  {JSON.stringify(lead?.basic_info, null, 2)}
-                </pre>
-              </GlassCard>
-
-              <GlassCard className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Company LinkedIn Post</h3>
-                <pre className="text-xs bg-muted/20 p-4 rounded-lg overflow-auto max-h-64 whitespace-pre-wrap">
-                  {JSON.stringify(lead?.company_linkedin_post, null, 2)}
-                </pre>
-              </GlassCard>
-
-              <GlassCard className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Company Data</h3>
-                <pre className="text-xs bg-muted/20 p-4 rounded-lg overflow-auto max-h-64 whitespace-pre-wrap">
-                  {JSON.stringify(lead?.company_data, null, 2)}
-                </pre>
-              </GlassCard>
-            </div>
-
-            <GlassCard className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Complete Lead Data</h3>
-              <pre className="text-xs bg-muted/20 p-4 rounded-lg overflow-auto max-h-96 whitespace-pre-wrap">
-                {JSON.stringify(lead, null, 2)}
-              </pre>
-            </GlassCard>
+            <RawDataTab 
+              linkedinPosts={linkedinPosts}
+              basicInfo={basicInfo}
+              companyData={companyData}
+              companyPosts={companyPosts}
+            />
           </TabsContent>
         </Tabs>
       </SheetContent>
     </Sheet>
   );
 }
+
+// LinkedIn Activity Tab Component
+function LinkedInActivityTab({ posts }: { posts: ReturnType<typeof normalizeLinkedInPosts> }) {
+  if (posts.length === 0) {
+    return (
+      <GlassCard className="p-12 text-center">
+        <div className="text-muted-foreground">
+          <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <h3 className="text-lg font-medium mb-2">No Recent Activity</h3>
+          <p className="text-sm">No LinkedIn posts found for this lead.</p>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {posts.map((post, index) => (
+        <GlassCard key={index} className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              {post.post_type && (
+                <Badge variant="outline" className="glass">
+                  {post.post_type}
+                </Badge>
+              )}
+              {post.date && (
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  {fmtDate(post.date)}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {post.summaries && post.summaries.length > 0 && (
+            <div className="mb-4">
+              <h4 className="font-medium mb-2">Summary</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                {post.summaries.map((summary, i) => (
+                  <li key={i}>{summary}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary">
+              <ChevronDown className="h-4 w-4" />
+              View Signals
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4 space-y-3">
+              {post.pain_points && post.pain_points.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium text-destructive mb-1">Pain Points</h5>
+                  <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                    {post.pain_points.map((point, i) => (
+                      <li key={i}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {post.brag_metrics && post.brag_metrics.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium text-primary mb-1">Brag Metrics</h5>
+                  <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                    {post.brag_metrics.map((metric, i) => (
+                      <li key={i}>{metric}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {post.voice_phrases && post.voice_phrases.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium mb-1">Voice Phrases</h5>
+                  <div className="flex flex-wrap gap-1">
+                    {post.voice_phrases.map((phrase, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">
+                        {phrase}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {post.stated_priorities && post.stated_priorities.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium mb-1">Priorities</h5>
+                  <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                    {post.stated_priorities.map((priority, i) => (
+                      <li key={i}>{priority}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {post.events_conferences && post.events_conferences.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium mb-1">Events & Conferences</h5>
+                  <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                    {post.events_conferences.map((event, i) => (
+                      <li key={i}>{event}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </GlassCard>
+      ))}
+    </div>
+  );
+}
+
+// Company Tab Component
+function CompanyTab({ 
+  basicInfo, 
+  companyData, 
+  companyPosts 
+}: { 
+  basicInfo: ReturnType<typeof normalizeBasicInfo>;
+  companyData: ReturnType<typeof normalizeCompanyData>;
+  companyPosts: ReturnType<typeof normalizeCompanyPosts>;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Profile Section */}
+      <GlassCard className="p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Building className="h-5 w-5" />
+          Profile
+        </h3>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          {basicInfo.fullname && (
+            <div>
+              <span className="font-medium">Name:</span>
+              <p className="text-muted-foreground">{basicInfo.fullname}</p>
+            </div>
+          )}
+          {basicInfo.headline && (
+            <div>
+              <span className="font-medium">Headline:</span>
+              <p className="text-muted-foreground">{basicInfo.headline}</p>
+            </div>
+          )}
+          {basicInfo.location && (
+            <div>
+              <span className="font-medium">Location:</span>
+              <p className="text-muted-foreground">{basicInfo.location}</p>
+            </div>
+          )}
+          {basicInfo.website && (
+            <div>
+              <span className="font-medium">Website:</span>
+              <a href={basicInfo.website} target="_blank" rel="noopener noreferrer" 
+                 className="text-primary hover:underline flex items-center gap-1">
+                Visit <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
+        </div>
+      </GlassCard>
+
+      {/* Contacts Section */}
+      {(companyData.contacts.emails.length > 0 || companyData.contacts.phones.length > 0 || companyData.contacts.social.length > 0) && (
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Contacts</h3>
+          <div className="space-y-3">
+            {companyData.contacts.emails.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Emails</h4>
+                <div className="flex flex-wrap gap-2">
+                  {companyData.contacts.emails.map((email, idx) => (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      {email}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {companyData.contacts.phones.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Phones</h4>
+                <div className="flex flex-wrap gap-2">
+                  {companyData.contacts.phones.map((phone, idx) => (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      {phone}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {companyData.contacts.social.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Social</h4>
+                <div className="flex flex-wrap gap-2">
+                  {companyData.contacts.social.map((social, idx) => (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      {social}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Products & CTAs */}
+      {(companyData.products.length > 0 || companyData.ctas.length > 0) && (
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Products & CTAs</h3>
+          <div className="space-y-3">
+            {companyData.products.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Products</h4>
+                <div className="flex flex-wrap gap-2">
+                  {companyData.products.map((product, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs">
+                      {product}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {companyData.ctas.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">CTAs</h4>
+                <div className="flex flex-wrap gap-2">
+                  {companyData.ctas.map((cta, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs">
+                      {cta}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Funding Table */}
+      {companyData.funding.length > 0 && (
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Funding History</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2">Round</th>
+                  <th className="text-left py-2">Date</th>
+                  <th className="text-left py-2">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {companyData.funding.map((fund, idx) => (
+                  <tr key={idx} className="border-b border-border/50">
+                    <td className="py-2">{fund.round || '—'}</td>
+                    <td className="py-2">{fmtDate(fund.date)}</td>
+                    <td className="py-2">{money(fund.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Tech Stack */}
+      {companyData.tech.length > 0 && (
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Tech Stack</h3>
+          <div className="flex flex-wrap gap-2">
+            {companyData.tech.map((tech, idx) => (
+              <Badge key={idx} variant="outline" className="text-xs">
+                {tech}
+              </Badge>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Company Posts */}
+      {companyPosts.length > 0 && (
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Recent Company Posts</h3>
+          <div className="space-y-3">
+            {companyPosts.slice(0, 3).map((post, idx) => (
+              <div key={idx} className="p-3 bg-muted/20 rounded border border-border/50">
+                <div className="flex items-center gap-2 mb-2">
+                  {post.date && (
+                    <span className="text-xs text-muted-foreground">
+                      {fmtDate(post.date)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-3">
+                  {post.excerpt || post.content || 'No content available'}
+                </p>
+                {post.link && (
+                  <a href={post.link} target="_blank" rel="noopener noreferrer" 
+                     className="text-primary hover:underline text-xs flex items-center gap-1 mt-2">
+                    View Post <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+    </div>
+  );
+}
+
+// Raw Data Tab Component
+function RawDataTab({ 
+  linkedinPosts, 
+  basicInfo, 
+  companyData, 
+  companyPosts 
+}: { 
+  linkedinPosts: ReturnType<typeof normalizeLinkedInPosts>;
+  basicInfo: ReturnType<typeof normalizeBasicInfo>;
+  companyData: ReturnType<typeof normalizeCompanyData>;
+  companyPosts: ReturnType<typeof normalizeCompanyPosts>;
+}) {
+  return (
+    <GlassCard className="p-6">
+      <h3 className="text-lg font-semibold mb-4">Raw JSON Data (Normalized)</h3>
+      <div className="space-y-4">
+        <div>
+          <h4 className="font-medium mb-2">LinkedIn Posts</h4>
+          <pre className="text-xs bg-muted/50 p-2 rounded border overflow-auto max-h-32">
+            {JSON.stringify(linkedinPosts, null, 2)}
+          </pre>
+        </div>
+        
+        <div>
+          <h4 className="font-medium mb-2">Basic Info</h4>
+          <pre className="text-xs bg-muted/50 p-2 rounded border overflow-auto max-h-32">
+            {JSON.stringify(basicInfo, null, 2)}
+          </pre>
+        </div>
+        
+        <div>
+          <h4 className="font-medium mb-2">Company Posts</h4>
+          <pre className="text-xs bg-muted/50 p-2 rounded border overflow-auto max-h-32">
+            {JSON.stringify(companyPosts, null, 2)}
+          </pre>
+        </div>
+        
+        <div>
+          <h4 className="font-medium mb-2">Company Data</h4>
+          <pre className="text-xs bg-muted/50 p-2 rounded border overflow-auto max-h-32">
+            {JSON.stringify(companyData, null, 2)}
+          </pre>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+export default LeadDrawer;
