@@ -11,6 +11,7 @@ import { ChartsPanel } from "@/components/charts/charts-panel";
 import { LeadDrawer } from "@/components/dashboard/lead-drawer";
 import { useLeads } from "@/hooks/use-leads";
 import { Lead, checkEnvVars } from "@/lib/supabase";
+import conquerLogo from "@/assets/conquer-logo.png";
 
 const DEFAULT_FILTERS: FilterState = {
   search: "",
@@ -89,9 +90,17 @@ export default function Dashboard() {
       <header className="sticky top-0 z-50 border-b border-border/20 backdrop-blur-xl bg-background/80">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold gradient-text">Lead Intelligence Dashboard</h1>
-              <p className="text-muted-foreground">Analyze and manage your lead data with advanced insights</p>
+            <div className="flex items-center gap-4">
+              <img 
+                src={conquerLogo} 
+                alt="Conquer Logo" 
+                className="h-8 w-auto cursor-pointer"
+                onClick={() => window.location.href = '/'}
+              />
+              <div>
+                <h1 className="text-3xl font-bold gradient-text">Conquer Lead Dashboard</h1>
+                <p className="text-muted-foreground">Analyze and manage your lead data with advanced insights</p>
+              </div>
             </div>
             
             <Dialog>
