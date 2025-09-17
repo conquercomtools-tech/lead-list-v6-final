@@ -78,6 +78,79 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* Basic Info Section */}
+            <GlassCard className="p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Basic Info
+              </h3>
+              {basicInfo.fullname || basicInfo.first_name || basicInfo.last_name ? (
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    {basicInfo.profile_picture_url ? (
+                      <img 
+                        src={basicInfo.profile_picture_url} 
+                        alt="Profile"
+                        className="w-16 h-16 rounded-full object-cover border-2 border-border/20"
+                      />
+                    ) : (
+                      <AvatarInitials 
+                        initials={
+                          basicInfo.first_name && basicInfo.last_name 
+                            ? (basicInfo.first_name[0] + basicInfo.last_name[0])
+                            : basicInfo.fullname 
+                              ? basicInfo.fullname.split(' ').map(n => n[0]).join('').slice(0, 2)
+                              : '?'
+                        }
+                        size="md"
+                        className="w-16 h-16"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <h4 className="text-xl font-bold">
+                        {basicInfo.fullname || `${basicInfo.first_name} ${basicInfo.last_name}`.trim()}
+                      </h4>
+                      {basicInfo.headline && (
+                        <p className="text-muted-foreground mt-1">{basicInfo.headline}</p>
+                      )}
+                    </div>
+                    
+                    {basicInfo.current_company && (
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        {basicInfo.current_company_url ? (
+                          <a 
+                            href={basicInfo.current_company_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline flex items-center gap-1"
+                          >
+                            {basicInfo.current_company}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span>{basicInfo.current_company}</span>
+                        )}
+                      </div>
+                    )}
+                    
+                    {(basicInfo.location_full || basicInfo.location_city || basicInfo.location_country) && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          {basicInfo.location_full || basicInfo.location_city || basicInfo.location_country}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">No basic info available.</p>
+              )}
+            </GlassCard>
+
             {/* Contact Information */}
             <GlassCard className="p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -388,19 +461,12 @@ function CompanyTab({
               <p className="text-muted-foreground">{basicInfo.headline}</p>
             </div>
           )}
-          {basicInfo.location && (
+          {(basicInfo.location_full || basicInfo.location_city || basicInfo.location_country) && (
             <div>
               <span className="font-medium">Location:</span>
-              <p className="text-muted-foreground">{basicInfo.location}</p>
-            </div>
-          )}
-          {basicInfo.website && (
-            <div>
-              <span className="font-medium">Website:</span>
-              <a href={basicInfo.website} target="_blank" rel="noopener noreferrer" 
-                 className="text-primary hover:underline flex items-center gap-1">
-                Visit <ExternalLink className="h-3 w-3" />
-              </a>
+              <p className="text-muted-foreground">
+                {basicInfo.location_full || basicInfo.location_city || basicInfo.location_country}
+              </p>
             </div>
           )}
         </div>

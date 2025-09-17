@@ -49,12 +49,15 @@ export function normalizeBasicInfo(src:any){
   const o = safeJson<any>(src, {});
   return {
     fullname: o?.fullname ?? '',
+    first_name: o?.first_name ?? '',
+    last_name: o?.last_name ?? '',
     headline: o?.headline ?? '',
-    location: o?.location?.full ?? o?.location ?? '',
-    country: o?.location?.country ?? o?.country ?? '',
-    avatar: o?.photo ?? o?.profile_image ?? null,
-    website: o?.website ?? null,
-    socials: o?.social ?? {},
+    location_full: o?.location?.full ?? o?.location ?? '',
+    location_city: o?.location?.city ?? '',
+    location_country: o?.location?.country ?? '',
+    current_company: o?.current_company ?? '',
+    current_company_url: o?.current_company_url ?? '',
+    profile_picture_url: o?.profile_picture_url ?? o?.profile_image ?? o?.photo ?? null,
   };
 }
 
