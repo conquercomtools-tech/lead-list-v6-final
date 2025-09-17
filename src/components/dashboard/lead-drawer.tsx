@@ -53,10 +53,19 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
       <SheetContent className="w-full sm:max-w-3xl glass-card border-border/30 overflow-y-auto">
         <SheetHeader className="pb-6 border-b border-border/20">
           <div className="flex items-start gap-4">
-            <AvatarInitials 
-              initials={(lead?.['First Name']?.[0] || '') + (lead?.['Last Name']?.[0] || '') || lead?.Company?.[0] || '?'}
-              size="lg"
-            />
+            {basicInfo.profile_picture_url ? (
+              <img 
+                src={basicInfo.profile_picture_url} 
+                alt="Profile"
+                className="w-20 h-20 rounded-full object-cover border border-white/10 shadow-lg"
+              />
+            ) : (
+              <AvatarInitials 
+                initials={(lead?.['First Name']?.[0] || '') + (lead?.['Last Name']?.[0] || '') || lead?.Company?.[0] || '?'}
+                size="lg"
+                className="w-20 h-20"
+              />
+            )}
             <div className="flex-1">
               <SheetTitle className="text-2xl gradient-text">{fullName}</SheetTitle>
               <p className="text-lg text-muted-foreground">{lead?.Title || 'No title'}</p>
@@ -85,66 +94,43 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                 Basic Info
               </h3>
               {basicInfo.fullname || basicInfo.first_name || basicInfo.last_name ? (
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    {basicInfo.profile_picture_url ? (
-                      <img 
-                        src={basicInfo.profile_picture_url} 
-                        alt="Profile"
-                        className="w-16 h-16 rounded-full object-cover border-2 border-border/20"
-                      />
-                    ) : (
-                      <AvatarInitials 
-                        initials={
-                          basicInfo.first_name && basicInfo.last_name 
-                            ? (basicInfo.first_name[0] + basicInfo.last_name[0])
-                            : basicInfo.fullname 
-                              ? basicInfo.fullname.split(' ').map(n => n[0]).join('').slice(0, 2)
-                              : '?'
-                        }
-                        size="md"
-                        className="w-16 h-16"
-                      />
+                <div className="space-y-2">
+                  <div>
+                    <h4 className="text-xl font-bold">
+                      {basicInfo.fullname || `${basicInfo.first_name} ${basicInfo.last_name}`.trim()}
+                    </h4>
+                    {basicInfo.headline && (
+                      <p className="text-muted-foreground mt-1">{basicInfo.headline}</p>
                     )}
                   </div>
-                  <div className="flex-1 space-y-2">
-                    <div>
-                      <h4 className="text-xl font-bold">
-                        {basicInfo.fullname || `${basicInfo.first_name} ${basicInfo.last_name}`.trim()}
-                      </h4>
-                      {basicInfo.headline && (
-                        <p className="text-muted-foreground mt-1">{basicInfo.headline}</p>
+                  
+                  {basicInfo.current_company && (
+                    <div className="flex items-center gap-2">
+                      <Building className="h-4 w-4 text-muted-foreground" />
+                      {basicInfo.current_company_url ? (
+                        <a 
+                          href={basicInfo.current_company_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline flex items-center gap-1"
+                        >
+                          {basicInfo.current_company}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span>{basicInfo.current_company}</span>
                       )}
                     </div>
-                    
-                    {basicInfo.current_company && (
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                        {basicInfo.current_company_url ? (
-                          <a 
-                            href={basicInfo.current_company_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline flex items-center gap-1"
-                          >
-                            {basicInfo.current_company}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <span>{basicInfo.current_company}</span>
-                        )}
-                      </div>
-                    )}
-                    
-                    {(basicInfo.location_full || basicInfo.location_city || basicInfo.location_country) && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {basicInfo.location_full || basicInfo.location_city || basicInfo.location_country}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  )}
+                  
+                  {(basicInfo.location_full || basicInfo.location_city || basicInfo.location_country) && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        {basicInfo.location_full || basicInfo.location_city || basicInfo.location_country}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-muted-foreground text-center py-4">No basic info available.</p>
