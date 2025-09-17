@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Lead, formatCurrency, formatNumber, getCountryFlag } from "@/lib/supabase";
 import { 
   normalizeLinkedInPosts, 
+  normalizeLinkedInPostsFromMessages,
   normalizeBasicInfo, 
   normalizeCompanyData, 
   normalizeCompanyPosts,
@@ -43,7 +44,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const fullName = [lead?.['First Name'], lead?.['Last Name']].filter(Boolean).join(' ') || 'Unknown';
   
   // Normalize JSONB fields
-  const linkedinPosts = normalizeLinkedInPosts(lead?.linkedin_posts);
+  const linkedinPosts = normalizeLinkedInPostsFromMessages(lead?.linkedin_posts);
   const basicInfo = normalizeBasicInfo(lead?.basic_info);
   const companyData = normalizeCompanyData(lead?.company_data);
   const companyPosts = normalizeCompanyPosts(lead?.company_linkedin_post);
@@ -302,7 +303,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 }
 
 // LinkedIn Activity Tab Component
-function LinkedInActivityTab({ posts }: { posts: ReturnType<typeof normalizeLinkedInPosts> }) {
+function LinkedInActivityTab({ posts }: { posts: ReturnType<typeof normalizeLinkedInPostsFromMessages> }) {
+  const [visibleCount, setVisibleCount] = useState(10);
+  const showMore = () => setVisibleCount(prev => prev + 10);
+
   if (posts.length === 0) {
     return (
       <GlassCard className="p-12 text-center">
@@ -315,103 +319,149 @@ function LinkedInActivityTab({ posts }: { posts: ReturnType<typeof normalizeLink
     );
   }
 
+  const visiblePosts = posts.slice(0, visibleCount);
+
   return (
     <div className="space-y-4">
-      {posts.map((post, index) => (
-        <GlassCard key={index} className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              {post.post_type && (
-                <Badge variant="outline" className="glass">
-                  {post.post_type}
-                </Badge>
-              )}
-              {post.date && (
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  {fmtDate(post.date)}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {post.summaries && post.summaries.length > 0 && (
-            <div className="mb-4">
-              <h4 className="font-medium mb-2">Summary</h4>
-              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                {post.summaries.map((summary, i) => (
-                  <li key={i}>{summary}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary">
-              <ChevronDown className="h-4 w-4" />
-              View Signals
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4 space-y-3">
-              {post.pain_points && post.pain_points.length > 0 && (
-                <div>
-                  <h5 className="text-sm font-medium text-destructive mb-1">Pain Points</h5>
-                  <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-                    {post.pain_points.map((point, i) => (
-                      <li key={i}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {post.brag_metrics && post.brag_metrics.length > 0 && (
-                <div>
-                  <h5 className="text-sm font-medium text-primary mb-1">Brag Metrics</h5>
-                  <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-                    {post.brag_metrics.map((metric, i) => (
-                      <li key={i}>{metric}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {post.voice_phrases && post.voice_phrases.length > 0 && (
-                <div>
-                  <h5 className="text-sm font-medium mb-1">Voice Phrases</h5>
-                  <div className="flex flex-wrap gap-1">
-                    {post.voice_phrases.map((phrase, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
-                        {phrase}
-                      </Badge>
-                    ))}
+      {visiblePosts.map((post, index) => {
+        // Calculate total bullet count for accordion title
+        const totalBullets = [
+          post.summaries?.length || 0,
+          post.pain_points?.length || 0,
+          post.brag_metrics?.length || 0,
+          post.voice_phrases?.length || 0,
+          post.stated_priorities?.length || 0,
+          post.events_conferences?.length || 0,
+          Object.keys(post._extra || {}).length
+        ].reduce((a, b) => a + b, 0);
+
+        return (
+          <GlassCard key={index} className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                {post.post_type && (
+                  <Badge variant="outline" className="glass">
+                    {post.post_type}
+                  </Badge>
+                )}
+                {post.date && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {fmtDate(post.date)}
                   </div>
-                </div>
-              )}
-              
-              {post.stated_priorities && post.stated_priorities.length > 0 && (
-                <div>
-                  <h5 className="text-sm font-medium mb-1">Priorities</h5>
-                  <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-                    {post.stated_priorities.map((priority, i) => (
-                      <li key={i}>{priority}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {post.events_conferences && post.events_conferences.length > 0 && (
-                <div>
-                  <h5 className="text-sm font-medium mb-1">Events & Conferences</h5>
-                  <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-                    {post.events_conferences.map((event, i) => (
-                      <li key={i}>{event}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-        </GlassCard>
-      ))}
+                )}
+              </div>
+            </div>
+            
+            {post.name && (
+              <p className="text-sm text-muted-foreground mb-4">{post.name}</p>
+            )}
+            
+            {post.summaries && post.summaries.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-medium mb-2">Summaries</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  {post.summaries.map((summary, i) => (
+                    <li key={i}>{summary}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary">
+                <ChevronDown className="h-4 w-4" />
+                View Signals
+                {totalBullets > 0 && (
+                  <Badge variant="secondary" className="text-xs ml-2">
+                    {totalBullets}
+                  </Badge>
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4 space-y-3">
+                {post.pain_points && post.pain_points.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-destructive mb-1">Pain Points</h5>
+                    <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                      {post.pain_points.map((point, i) => (
+                        <li key={i}>{point}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {post.brag_metrics && post.brag_metrics.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-primary mb-1">Brag Metrics</h5>
+                    <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                      {post.brag_metrics.map((metric, i) => (
+                        <li key={i}>{metric}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {post.voice_phrases && post.voice_phrases.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium mb-1">Voice Phrases</h5>
+                    <div className="flex flex-wrap gap-1">
+                      {post.voice_phrases.map((phrase, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {phrase}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {post.stated_priorities && post.stated_priorities.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium mb-1">Stated Priorities</h5>
+                    <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                      {post.stated_priorities.map((priority, i) => (
+                        <li key={i}>{priority}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {post.events_conferences && post.events_conferences.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium mb-1">Events & Conferences</h5>
+                    <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                      {post.events_conferences.map((event, i) => (
+                        <li key={i}>{event}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {post._extra && Object.keys(post._extra).length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium mb-1">Other Fields</h5>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      {Object.entries(post._extra).map(([key, value]) => (
+                        <div key={key} className="flex gap-2">
+                          <span className="font-medium">{key}:</span>
+                          <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          </GlassCard>
+        );
+      })}
+      
+      {visibleCount < posts.length && (
+        <div className="text-center">
+          <Button onClick={showMore} variant="outline" className="glass">
+            Load More ({posts.length - visibleCount} remaining)
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

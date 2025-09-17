@@ -45,6 +45,49 @@ export function normalizeLinkedInPosts(src:any): LinkedInPost[] {
   }));
 }
 
+export type LIContent = {
+  date?: string;
+  name?: string;
+  post_type?: string;
+  summaries?: string[];
+  pain_points?: string[];
+  brag_metrics?: string[];
+  voice_phrases?: string[];
+  stated_priorities?: string[];
+  events_conferences?: string[];
+  // pass-through for anything extra
+  _extra?: Record<string, any>;
+};
+
+export function normalizeLinkedInPostsFromMessages(src: any): LIContent[] {
+  const arr = safeJson<any[]>(src, []);
+  return arr.map((item) => {
+    const content = item?.message?.content ?? {};
+    // merge priority_buckets into flat fields if present
+    const pb = content?.priority_buckets ?? {};
+    const obj: LIContent = {
+      date: content?.date,
+      name: content?.name,
+      post_type: content?.post_type,
+      summaries: toArray(content?.summaries),
+      pain_points: toArray(content?.pain_points ?? pb?.pain_points),
+      brag_metrics: toArray(content?.brag_metrics ?? pb?.brag_metrics),
+      voice_phrases: toArray(content?.voice_phrases),
+      stated_priorities: toArray(content?.stated_priorities ?? pb?.stated_priorities),
+      events_conferences: toArray(content?.events_conferences ?? pb?.events_conferences),
+      _extra: {}
+    };
+
+    // keep any other keys from content (so we don't "miss" anything)
+    for (const k of Object.keys(content)) {
+      if (!(k in obj) && k !== 'priority_buckets') obj._extra![k] = content[k];
+    }
+    return obj;
+  })
+  // sort newest first if date provided
+  .sort((a,b) => (b.date || '').localeCompare(a.date || ''));
+}
+
 export function normalizeBasicInfo(src:any){
   const o = safeJson<any>(src, {});
   return {
