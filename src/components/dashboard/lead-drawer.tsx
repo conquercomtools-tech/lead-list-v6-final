@@ -19,6 +19,7 @@ import {
   normalizeCompanyDataFromMessages,
   aggregateCompanySnapshot,
   normalizeYouTubeSummary,
+  normalizeCompetitors,
   money,
   fmtDate
 } from "@/lib/normalize";
@@ -53,6 +54,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const companyPosts = normalizeCompanyPosts(lead?.company_linkedin_post);
   const companyItems = normalizeCompanyDataFromMessages(lead?.company_data);
   const youtubeData = normalizeYouTubeSummary(lead?.youtube_video || null);
+  const competitorsData = normalizeCompetitors(lead?.competitors);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -90,6 +92,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
             <TabsTrigger value="linkedin">LinkedIn Activity</TabsTrigger>
             <TabsTrigger value="company">Company</TabsTrigger>
             <TabsTrigger value="youtube">YouTube Summary</TabsTrigger>
+            <TabsTrigger value="competitors">Competitors</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -291,6 +294,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 
           <TabsContent value="youtube" className="space-y-6">
             <YouTubeSummaryTab youtubeData={youtubeData} />
+          </TabsContent>
+
+          <TabsContent value="competitors" className="space-y-6">
+            <CompetitorsTab competitorsData={competitorsData} />
           </TabsContent>
         </Tabs>
       </SheetContent>
@@ -699,6 +706,64 @@ function YouTubeSummaryTab({ youtubeData }: { youtubeData: ReturnType<typeof nor
         data.notable_quotes.length === 0 &&
         data.stated_priorities.length === 0) && (
         <div className="text-white/70">No YouTube summary available.</div>
+      )}
+    </SectionCard>
+  );
+}
+
+// Competitors Tab Component
+function CompetitorsTab({ competitorsData }: { competitorsData: ReturnType<typeof normalizeCompetitors> }) {
+  return (
+    <SectionCard
+      title="Competitors"
+      right={competitorsData.invalid ? <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Invalid JSON</Badge> : null}
+    >
+      {competitorsData.items.length === 0 ? (
+        <div className="text-white/70">No competitors available.</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {competitorsData.items.map((c, i) => (
+            <div key={i} className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-base font-medium text-white truncate">
+                    {c.website ? (
+                      <a href={c.website} target="_blank" rel="noopener" className="hover:underline text-amber-300">
+                        {c.name}
+                      </a>
+                    ) : (
+                      c.name
+                    )}
+                  </div>
+                  {c.description && (
+                    <div className="mt-1 text-sm text-white/80">{c.description}</div>
+                  )}
+                </div>
+                {c.website && (
+                  <a href={c.website} target="_blank" rel="noopener"
+                     className="shrink-0 text-xs px-2 py-1 rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15">
+                    Visit
+                  </a>
+                )}
+              </div>
+
+              {c.readable && (
+                <details className="mt-2 group">
+                  <summary className="cursor-pointer text-xs text-white/60 hover:text-white/80">
+                    More details
+                  </summary>
+                  <div className="mt-1 text-sm text-white/75">
+                    {c.readable}
+                  </div>
+                </details>
+              )}
+
+              {c.website && (
+                <div className="mt-2 text-xs text-white/50 truncate">{c.website}</div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </SectionCard>
   );

@@ -227,3 +227,37 @@ export function normalizeYouTubeSummary(src: any): { data: YouTubeSummary; inval
   };
   return { data, invalid };
 }
+
+// ---------- COMPETITORS: array of items ----------
+export type CompetitorItem = {
+  name: string;
+  website: string | null;
+  description: string | null;
+  readable: string | null;
+};
+
+const urlFromReadable = (r?: string|null): string | null => {
+  if (!r) return null;
+  const m = r.match(/\((https?:\/\/[^)]+)\)/i);
+  return m ? m[1] : null;
+};
+
+export function normalizeCompetitors(src: any): { items: CompetitorItem[]; invalid: boolean } {
+  const { value, invalid } = safeJsonWithFlag<any[]>(src, []);
+  const seen = new Set<string>();
+  const items: CompetitorItem[] = (Array.isArray(value) ? value : []).map((c) => {
+    const rawUrl = c?.website || urlFromReadable(c?.readable) || null;
+    const url = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`) : null;
+    const name = (c?.name ?? '').toString().trim();
+    const description = (c?.description ?? null);
+    const readable = (c?.readable ?? null);
+    return { name, website: url, description, readable };
+  }).filter(x => x.name);
+
+  const deduped = items.filter(i => {
+    const key = `${i.name.toLowerCase()}|${i.website ?? ''}`;
+    if (seen.has(key)) return false; seen.add(key); return true;
+  }).sort((a,b) => a.name.localeCompare(b.name));
+
+  return { items: deduped, invalid };
+}
