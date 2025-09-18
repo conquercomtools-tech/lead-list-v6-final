@@ -104,6 +104,86 @@ export function normalizeBasicInfo(src:any){
   };
 }
 
+export function safeJsonWithFlag<T = unknown>(val: any, fallback: T): { value: T; invalid: boolean } {
+  if (val == null) return { value: fallback, invalid: false };
+  if (typeof val === 'object') return { value: val as T, invalid: false };
+  if (typeof val === 'string') {
+    try { return { value: JSON.parse(val) as T, invalid: false }; }
+    catch { return { value: fallback, invalid: true }; }
+  }
+  return { value: fallback, invalid: false };
+}
+
+// ---------- COMPANY: array of items with message.content ----------
+export type CompanyContent = {
+  url: string | null;
+  ctas: string[];
+  summary: string | null;
+  contacts: { emails: string[]; phones: string[]; social: string[] };
+  headline: string | null;
+  products: string[];
+  page_type: string | null;
+  value_props: string[];
+};
+
+export function normalizeCompanyDataFromMessages(src: any): CompanyContent[] {
+  const arr = safeJson<any[]>(src, []);
+  return arr.map((item) => {
+    const c = item?.message?.content ?? {};
+    const url = (c?.url ?? null);
+    return {
+      url: (url === '' ? null : url),
+      ctas: toArray(c?.ctas),
+      summary: c?.summary ?? null,
+      contacts: {
+        emails: toArray(c?.contacts?.emails),
+        phones: toArray(c?.contacts?.phones),
+        social: toArray(c?.contacts?.social),
+      },
+      headline: c?.headline ?? null,
+      products: toArray(c?.products),
+      page_type: c?.page_type ?? null,
+      value_props: toArray(c?.value_props),
+    };
+  });
+}
+
+export function aggregateCompanySnapshot(items: CompanyContent[]) {
+  const uniq = (arr: string[]) => Array.from(new Set(arr.filter(Boolean)));
+  const firstNonEmpty = (arr: (string|null|undefined)[]) => (arr.find(v => !!v) ?? null);
+
+  const emails:string[]=[]; const phones:string[]=[]; const social:string[]=[];
+  const ctas:string[]=[]; const products:string[]=[]; const value_props:string[]=[];
+  const headlines:(string|null)[]=[]; const summaries:(string|null)[]=[]; const urls:(string|null)[]=[];
+  const pageTypeCounts: Record<string, number> = {};
+
+  for (const it of items) {
+    emails.push(...it.contacts.emails);
+    phones.push(...it.contacts.phones);
+    social.push(...it.contacts.social);
+    ctas.push(...it.ctas);
+    products.push(...it.products);
+    value_props.push(...it.value_props);
+    headlines.push(it.headline);
+    summaries.push(it.summary);
+    urls.push(it.url);
+    if (it.page_type) pageTypeCounts[it.page_type] = (pageTypeCounts[it.page_type] ?? 0) + 1;
+  }
+
+  return {
+    primaryHeadline: firstNonEmpty(headlines),
+    primarySummary: firstNonEmpty(summaries),
+    primaryUrl: firstNonEmpty(urls),
+    emails: uniq(emails),
+    phones: uniq(phones),
+    social: uniq(social),
+    ctas: uniq(ctas),
+    products: uniq(products),
+    value_props: uniq(value_props),
+    pageTypeCounts,
+  };
+}
+
 export function normalizeCompanyData(src:any){
   const o = safeJson<any>(src, {});
   return {
@@ -125,4 +205,25 @@ export function normalizeCompanyData(src:any){
 export function normalizeCompanyPosts(src:any){
   const v = safeJson<any>(src, []);
   return Array.isArray(v) ? v : [v];   // allow single object
+}
+
+// ---------- YOUTUBE: single object ----------
+export type YouTubeSummary = {
+  summary: string | null;
+  pain_points: string[];
+  brag_metrics: string[];
+  notable_quotes: string[];
+  stated_priorities: string[];
+};
+
+export function normalizeYouTubeSummary(src: any): { data: YouTubeSummary; invalid: boolean } {
+  const { value, invalid } = safeJsonWithFlag<any>(src, {});
+  const data: YouTubeSummary = {
+    summary: value?.summary ?? null,
+    pain_points: toArray(value?.pain_points),
+    brag_metrics: toArray(value?.brag_metrics),
+    notable_quotes: toArray(value?.notable_quotes),
+    stated_priorities: toArray(value?.stated_priorities),
+  };
+  return { data, invalid };
 }

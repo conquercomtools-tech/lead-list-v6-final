@@ -16,6 +16,9 @@ import {
   normalizeBasicInfo, 
   normalizeCompanyData, 
   normalizeCompanyPosts,
+  normalizeCompanyDataFromMessages,
+  aggregateCompanySnapshot,
+  normalizeYouTubeSummary,
   money,
   fmtDate
 } from "@/lib/normalize";
@@ -48,6 +51,8 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const basicInfo = normalizeBasicInfo(lead?.basic_info);
   const companyData = normalizeCompanyData(lead?.company_data);
   const companyPosts = normalizeCompanyPosts(lead?.company_linkedin_post);
+  const companyItems = normalizeCompanyDataFromMessages(lead?.company_data);
+  const youtubeData = normalizeYouTubeSummary(lead?.youtube_video || null);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -84,7 +89,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="linkedin">LinkedIn Activity</TabsTrigger>
             <TabsTrigger value="company">Company</TabsTrigger>
-            <TabsTrigger value="raw">Raw Data</TabsTrigger>
+            <TabsTrigger value="youtube">YouTube Summary</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -281,20 +286,11 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
           </TabsContent>
 
           <TabsContent value="company" className="space-y-6">
-            <CompanyTab 
-              basicInfo={basicInfo}
-              companyData={companyData}
-              companyPosts={companyPosts}
-            />
+            <NewCompanyTab companyItems={companyItems} />
           </TabsContent>
 
-          <TabsContent value="raw" className="space-y-6">
-            <RawDataTab 
-              linkedinPosts={linkedinPosts}
-              basicInfo={basicInfo}
-              companyData={companyData}
-              companyPosts={companyPosts}
-            />
+          <TabsContent value="youtube" className="space-y-6">
+            <YouTubeSummaryTab youtubeData={youtubeData} />
           </TabsContent>
         </Tabs>
       </SheetContent>
@@ -466,244 +462,245 @@ function LinkedInActivityTab({ posts }: { posts: ReturnType<typeof normalizeLink
   );
 }
 
-// Company Tab Component
-function CompanyTab({ 
-  basicInfo, 
-  companyData, 
-  companyPosts 
+// Helper component for chips
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-block px-2 py-1 text-xs bg-white/10 border border-white/15 text-white/80 rounded-md mr-1 mb-1">
+      {children}
+    </span>
+  );
+}
+
+// Section Card wrapper
+function SectionCard({ 
+  title, 
+  children, 
+  right 
 }: { 
-  basicInfo: ReturnType<typeof normalizeBasicInfo>;
-  companyData: ReturnType<typeof normalizeCompanyData>;
-  companyPosts: ReturnType<typeof normalizeCompanyPosts>;
+  title: string; 
+  children: React.ReactNode; 
+  right?: React.ReactNode;
 }) {
   return (
-    <div className="space-y-6">
-      {/* Profile Section */}
-      <GlassCard className="p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+    <GlassCard className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
           <Building className="h-5 w-5" />
-          Profile
+          {title}
         </h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          {basicInfo.fullname && (
+        {right}
+      </div>
+      {children}
+    </GlassCard>
+  );
+}
+
+// New Company Tab Component
+function NewCompanyTab({ companyItems }: { companyItems: ReturnType<typeof normalizeCompanyDataFromMessages> }) {
+  const snap = aggregateCompanySnapshot(companyItems);
+
+  return (
+    <div className="space-y-6">
+      {/* Company Snapshot */}
+      <SectionCard 
+        title="Company Snapshot" 
+        right={
+          Object.keys(snap.pageTypeCounts).length > 0 ? (
+            <div className="flex gap-1">
+              {Object.entries(snap.pageTypeCounts).map(([k,v]) => (
+                <span key={k} className="text-xs px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80">
+                  {k} · {v}
+                </span>
+              ))}
+            </div>
+          ) : null
+        }
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div className="text-sm text-white/60 mb-1">Headline</div>
+            <div className="text-white">{snap.primaryHeadline ?? '—'}</div>
+          </div>
+          <div>
+            <div className="text-sm text-white/60 mb-1">Website</div>
+            {snap.primaryUrl ? (
+              <a href={snap.primaryUrl} target="_blank" rel="noopener" className="text-amber-300 hover:underline">
+                {snap.primaryUrl}
+              </a>
+            ) : (
+              <span className="text-white/70">—</span>
+            )}
+          </div>
+
+          <div className="md:col-span-2">
+            <div className="text-sm text-white/60 mb-1">Summary</div>
+            <div className="text-white/80">{snap.primarySummary ?? '—'}</div>
+          </div>
+
+          {snap.emails.length > 0 && (
             <div>
-              <span className="font-medium">Name:</span>
-              <p className="text-muted-foreground">{basicInfo.fullname}</p>
+              <div className="text-sm text-white/60 mb-1">Emails</div>
+              <div>{snap.emails.map(e => <Chip key={e}>{e}</Chip>)}</div>
             </div>
           )}
-          {basicInfo.headline && (
+          {snap.phones.length > 0 && (
             <div>
-              <span className="font-medium">Headline:</span>
-              <p className="text-muted-foreground">{basicInfo.headline}</p>
+              <div className="text-sm text-white/60 mb-1">Phones</div>
+              <div>{snap.phones.map(p => <Chip key={p}>{p}</Chip>)}</div>
             </div>
           )}
-          {(basicInfo.location_full || basicInfo.location_city || basicInfo.location_country) && (
-            <div>
-              <span className="font-medium">Location:</span>
-              <p className="text-muted-foreground">
-                {basicInfo.location_full || basicInfo.location_city || basicInfo.location_country}
-              </p>
+          {snap.social.length > 0 && (
+            <div className="md:col-span-2">
+              <div className="text-sm text-white/60 mb-1">Social</div>
+              <div>{snap.social.map(s => <Chip key={s}>{s}</Chip>)}</div>
+            </div>
+          )}
+          {snap.products.length > 0 && (
+            <div className="md:col-span-2">
+              <div className="text-sm text-white/60 mb-1">Products</div>
+              <div>{snap.products.map(p => <Chip key={p}>{p}</Chip>)}</div>
+            </div>
+          )}
+          {snap.value_props.length > 0 && (
+            <div className="md:col-span-2">
+              <div className="text-sm text-white/60 mb-1">Value Props</div>
+              <div>{snap.value_props.map(v => <Chip key={v}>{v}</Chip>)}</div>
+            </div>
+          )}
+          {snap.ctas.length > 0 && (
+            <div className="md:col-span-2">
+              <div className="text-sm text-white/60 mb-1">CTAs</div>
+              <div>{snap.ctas.map(c => <Chip key={c}>{c}</Chip>)}</div>
             </div>
           )}
         </div>
-      </GlassCard>
+      </SectionCard>
 
-      {/* Contacts Section */}
-      {(companyData.contacts.emails.length > 0 || companyData.contacts.phones.length > 0 || companyData.contacts.social.length > 0) && (
-        <GlassCard className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Contacts</h3>
-          <div className="space-y-3">
-            {companyData.contacts.emails.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Emails</h4>
-                <div className="flex flex-wrap gap-2">
-                  {companyData.contacts.emails.map((email, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs">
-                      {email}
-                    </Badge>
-                  ))}
-                </div>
+      {/* Recent Company Pages */}
+      <div className="space-y-3">
+        {companyItems.length === 0 && (
+          <SectionCard title="Recent Company Pages">
+            <div className="text-white/70">No content available.</div>
+          </SectionCard>
+        )}
+
+        {companyItems.slice(0, 8).map((it, idx) => (
+          <SectionCard
+            key={idx}
+            title={it.headline ?? 'Untitled'}
+            right={it.page_type ? <Badge>{it.page_type}</Badge> : null}
+          >
+            {it.url && (
+              <div className="mb-2">
+                <a href={it.url} target="_blank" rel="noopener" className="text-amber-300 hover:underline">
+                  {it.url}
+                </a>
               </div>
             )}
-            {companyData.contacts.phones.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Phones</h4>
-                <div className="flex flex-wrap gap-2">
-                  {companyData.contacts.phones.map((phone, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs">
-                      {phone}
-                    </Badge>
-                  ))}
-                </div>
+            <div className="text-white/80 mb-3">{it.summary ?? '—'}</div>
+
+            {it.products.length > 0 && (
+              <div className="mb-2">
+                <div className="text-xs text-white/60 mb-1">Products</div>
+                {it.products.map(p => <Chip key={p}>{p}</Chip>)}
               </div>
             )}
-            {companyData.contacts.social.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Social</h4>
-                <div className="flex flex-wrap gap-2">
-                  {companyData.contacts.social.map((social, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs">
-                      {social}
-                    </Badge>
-                  ))}
-                </div>
+            {it.value_props.length > 0 && (
+              <div className="mb-2">
+                <div className="text-xs text-white/60 mb-1">Value Props</div>
+                {it.value_props.map(v => <Chip key={v}>{v}</Chip>)}
               </div>
             )}
-          </div>
-        </GlassCard>
-      )}
-
-      {/* Products & CTAs */}
-      {(companyData.products.length > 0 || companyData.ctas.length > 0) && (
-        <GlassCard className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Products & CTAs</h3>
-          <div className="space-y-3">
-            {companyData.products.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Products</h4>
-                <div className="flex flex-wrap gap-2">
-                  {companyData.products.map((product, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">
-                      {product}
-                    </Badge>
-                  ))}
-                </div>
+            {it.ctas.length > 0 && (
+              <div className="mb-2">
+                <div className="text-xs text-white/60 mb-1">CTAs</div>
+                {it.ctas.map(c => <Chip key={c}>{c}</Chip>)}
               </div>
             )}
-            {companyData.ctas.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">CTAs</h4>
-                <div className="flex flex-wrap gap-2">
-                  {companyData.ctas.map((cta, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">
-                      {cta}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </GlassCard>
-      )}
-
-      {/* Funding Table */}
-      {companyData.funding.length > 0 && (
-        <GlassCard className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Funding History</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Round</th>
-                  <th className="text-left py-2">Date</th>
-                  <th className="text-left py-2">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {companyData.funding.map((fund, idx) => (
-                  <tr key={idx} className="border-b border-border/50">
-                    <td className="py-2">{fund.round || '—'}</td>
-                    <td className="py-2">{fmtDate(fund.date)}</td>
-                    <td className="py-2">{money(fund.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </GlassCard>
-      )}
-
-      {/* Tech Stack */}
-      {companyData.tech.length > 0 && (
-        <GlassCard className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Tech Stack</h3>
-          <div className="flex flex-wrap gap-2">
-            {companyData.tech.map((tech, idx) => (
-              <Badge key={idx} variant="outline" className="text-xs">
-                {tech}
-              </Badge>
-            ))}
-          </div>
-        </GlassCard>
-      )}
-
-      {/* Company Posts */}
-      {companyPosts.length > 0 && (
-        <GlassCard className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Recent Company Posts</h3>
-          <div className="space-y-3">
-            {companyPosts.slice(0, 3).map((post, idx) => (
-              <div key={idx} className="p-3 bg-muted/20 rounded border border-border/50">
-                <div className="flex items-center gap-2 mb-2">
-                  {post.date && (
-                    <span className="text-xs text-muted-foreground">
-                      {fmtDate(post.date)}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {post.excerpt || post.content || 'No content available'}
-                </p>
-                {post.link && (
-                  <a href={post.link} target="_blank" rel="noopener noreferrer" 
-                     className="text-primary hover:underline text-xs flex items-center gap-1 mt-2">
-                    View Post <ExternalLink className="h-3 w-3" />
-                  </a>
+            {(it.contacts.emails.length + it.contacts.phones.length + it.contacts.social.length) > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {it.contacts.emails.length > 0 && (
+                  <div>
+                    <div className="text-xs text-white/60 mb-1">Emails</div>
+                    {it.contacts.emails.map(e => <Chip key={e}>{e}</Chip>)}
+                  </div>
+                )}
+                {it.contacts.phones.length > 0 && (
+                  <div>
+                    <div className="text-xs text-white/60 mb-1">Phones</div>
+                    {it.contacts.phones.map(p => <Chip key={p}>{p}</Chip>)}
+                  </div>
+                )}
+                {it.contacts.social.length > 0 && (
+                  <div>
+                    <div className="text-xs text-white/60 mb-1">Social</div>
+                    {it.contacts.social.map(s => <Chip key={s}>{s}</Chip>)}
+                  </div>
                 )}
               </div>
-            ))}
-          </div>
-        </GlassCard>
-      )}
+            )}
+          </SectionCard>
+        ))}
+      </div>
     </div>
   );
 }
 
-// Raw Data Tab Component
-function RawDataTab({ 
-  linkedinPosts, 
-  basicInfo, 
-  companyData, 
-  companyPosts 
-}: { 
-  linkedinPosts: ReturnType<typeof normalizeLinkedInPosts>;
-  basicInfo: ReturnType<typeof normalizeBasicInfo>;
-  companyData: ReturnType<typeof normalizeCompanyData>;
-  companyPosts: ReturnType<typeof normalizeCompanyPosts>;
-}) {
+// YouTube Summary Tab Component
+function YouTubeSummaryTab({ youtubeData }: { youtubeData: ReturnType<typeof normalizeYouTubeSummary> }) {
+  const { data, invalid } = youtubeData;
+
   return (
-    <GlassCard className="p-6">
-      <h3 className="text-lg font-semibold mb-4">Raw JSON Data (Normalized)</h3>
-      <div className="space-y-4">
-        <div>
-          <h4 className="font-medium mb-2">LinkedIn Posts</h4>
-          <pre className="text-xs bg-muted/50 p-2 rounded border overflow-auto max-h-32">
-            {JSON.stringify(linkedinPosts, null, 2)}
-          </pre>
+    <SectionCard
+      title="YouTube Summary"
+      right={invalid ? <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Invalid JSON</Badge> : null}
+    >
+      {/* Summary paragraph */}
+      <div className="text-white/80 mb-4">{data.summary ?? '—'}</div>
+
+      {/* Sections, only if non-empty */}
+      {data.pain_points.length > 0 && (
+        <div className="mb-3">
+          <div className="text-sm text-white/60 mb-1">Pain points</div>
+          <ul className="list-disc pl-5 space-y-1">
+            {data.pain_points.map((x, i) => <li key={i}>{x}</li>)}
+          </ul>
         </div>
-        
-        <div>
-          <h4 className="font-medium mb-2">Basic Info</h4>
-          <pre className="text-xs bg-muted/50 p-2 rounded border overflow-auto max-h-32">
-            {JSON.stringify(basicInfo, null, 2)}
-          </pre>
+      )}
+      {data.brag_metrics.length > 0 && (
+        <div className="mb-3">
+          <div className="text-sm text-white/60 mb-1">Brag metrics</div>
+          <ul className="list-disc pl-5 space-y-1">
+            {data.brag_metrics.map((x, i) => <li key={i}>{x}</li>)}
+          </ul>
         </div>
-        
-        <div>
-          <h4 className="font-medium mb-2">Company Posts</h4>
-          <pre className="text-xs bg-muted/50 p-2 rounded border overflow-auto max-h-32">
-            {JSON.stringify(companyPosts, null, 2)}
-          </pre>
+      )}
+      {data.notable_quotes.length > 0 && (
+        <div className="mb-3">
+          <div className="text-sm text-white/60 mb-1">Notable quotes</div>
+          <ul className="list-disc pl-5 space-y-1">
+            {data.notable_quotes.map((x, i) => <li key={i}>&ldquo;{x}&rdquo;</li>)}
+          </ul>
         </div>
-        
+      )}
+      {data.stated_priorities.length > 0 && (
         <div>
-          <h4 className="font-medium mb-2">Company Data</h4>
-          <pre className="text-xs bg-muted/50 p-2 rounded border overflow-auto max-h-32">
-            {JSON.stringify(companyData, null, 2)}
-          </pre>
+          <div className="text-sm text-white/60 mb-1">Stated priorities</div>
+          <ul className="list-disc pl-5 space-y-1">
+            {data.stated_priorities.map((x, i) => <li key={i}>{x}</li>)}
+          </ul>
         </div>
-      </div>
-    </GlassCard>
+      )}
+
+      {/* If everything empty */}
+      {(!data.summary &&
+        data.pain_points.length === 0 &&
+        data.brag_metrics.length === 0 &&
+        data.notable_quotes.length === 0 &&
+        data.stated_priorities.length === 0) && (
+        <div className="text-white/70">No YouTube summary available.</div>
+      )}
+    </SectionCard>
   );
 }
 

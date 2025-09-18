@@ -50,6 +50,7 @@ export type Lead = {
   basic_info?: any;
   company_linkedin_post?: any;
   company_data?: any;
+  youtube_video?: any;
   'Facebook Url'?: string;
   'Twitter Url'?: string;
   Website?: string;
