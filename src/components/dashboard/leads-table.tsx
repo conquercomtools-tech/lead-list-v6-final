@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MobileLeadCard } from "@/components/mobile/mobile-lead-card";
 import { Lead, formatCurrency, formatNumber, getCountryFlag } from "@/lib/supabase";
 import { getInitials } from "@/lib/initials";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 
 interface LeadsTableProps {
@@ -39,6 +41,7 @@ export function LeadsTable({
   const [sortColumn, setSortColumn] = useState<SortColumn>('');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleSort = (column: string) => {
     const newDirection = sortColumn === column && sortDirection === 'asc' ? 'desc' : 'asc';
@@ -82,11 +85,11 @@ export function LeadsTable({
 
   if (isLoading) {
     return (
-      <GlassCard className="p-6">
-        <div className="space-y-4">
+      <GlassCard className="p-4 md:p-6">
+        <div className="space-y-3 md:space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex space-x-4">
-              <Skeleton className="h-10 w-10 rounded-full" />
+            <div key={i} className="flex space-x-3 md:space-x-4">
+              <Skeleton className="h-8 w-8 md:h-10 md:w-10 rounded-full" />
               <div className="space-y-2 flex-1">
                 <Skeleton className="h-4 w-1/4" />
                 <Skeleton className="h-4 w-1/3" />
@@ -94,6 +97,78 @@ export function LeadsTable({
             </div>
           ))}
         </div>
+      </GlassCard>
+    );
+  }
+
+  // Mobile Card List
+  if (isMobile) {
+    return (
+      <GlassCard className="overflow-hidden">
+        <div className="p-4 border-b border-border/20">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold gradient-text">
+              Leads ({totalCount.toLocaleString()})
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Show:</span>
+              <Select value={pageSize.toString()} onValueChange={(value) => onPageSizeChange(Number(value))}>
+                <SelectTrigger className="w-16 glass border-border/30 h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="glass-card border-border/30">
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-3">
+          {leads.map((lead, index) => (
+            <MobileLeadCard 
+              key={index}
+              lead={lead}
+              onLeadClick={onLeadClick}
+            />
+          ))}
+        </div>
+
+        {/* Mobile Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t border-border/20">
+            <div className="text-sm text-muted-foreground">
+              {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="tap-lg glass border-border/30"
+              >
+                Prev
+              </Button>
+              
+              <span className="text-sm px-2">
+                {currentPage} / {totalPages}
+              </span>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="tap-lg glass border-border/30"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </GlassCard>
     );
   }

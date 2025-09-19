@@ -9,7 +9,10 @@ import { FiltersBar, FilterState } from "@/components/dashboard/filters-bar";
 import { LeadsTable } from "@/components/dashboard/leads-table";
 import { ChartsPanel } from "@/components/charts/charts-panel";
 import { LeadDrawer } from "@/components/dashboard/lead-drawer";
+import { MobileStatsChips } from "@/components/mobile/mobile-stats-chips";
+import { MobileChartsCarousel } from "@/components/mobile/mobile-charts-carousel";
 import { useLeads } from "@/hooks/use-leads";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Lead, checkEnvVars } from "@/lib/supabase";
 import conquerLogo from "@/assets/conquer-logo.png";
 
@@ -32,6 +35,7 @@ export default function Dashboard() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const isMobile = useIsMobile();
   const missingEnvVars = checkEnvVars();
 
   const {
@@ -88,26 +92,34 @@ export default function Dashboard() {
     <div className="min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/20 backdrop-blur-xl bg-background/80">
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
               <img 
                 src={conquerLogo} 
                 alt="Conquer Logo" 
-                className="h-8 w-auto cursor-pointer"
+                className="h-6 md:h-8 w-auto cursor-pointer shrink-0"
                 onClick={() => window.location.href = '/'}
               />
-              <div>
-                <h1 className="text-3xl font-bold gradient-text">Conquer Lead Dashboard</h1>
-                <p className="text-muted-foreground">Analyze and manage your lead data with advanced insights</p>
+              <div className="min-w-0">
+                <h1 className={`font-bold gradient-text ${isMobile ? 'text-lg' : 'text-3xl'}`}>
+                  Conquer Lead Dashboard
+                </h1>
+                {!isMobile && (
+                  <p className="text-muted-foreground">Analyze and manage your lead data with advanced insights</p>
+                )}
               </div>
             </div>
             
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="glass border-border/30">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
+                <Button 
+                  variant="outline" 
+                  size={isMobile ? "sm" : "sm"}
+                  className={`glass border-border/30 ${isMobile ? 'tap-lg p-2' : ''}`}
+                >
+                  <Settings className="h-4 w-4" />
+                  {!isMobile && <span className="ml-2">Settings</span>}
                 </Button>
               </DialogTrigger>
               <DialogContent className="glass-card border-border/30">
@@ -139,11 +151,17 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-6">
+      <main className="container mx-auto px-4 md:px-6 py-4 md:py-6">
         <EnvBanner missingVars={missingEnvVars} />
         
-        {/* Stats Cards */}
-        <StatsCards stats={stats} isLoading={isLoading} />
+        {/* Stats - Cards on desktop, chips on mobile */}
+        {isMobile ? (
+          <div className="mb-6">
+            <MobileStatsChips stats={stats} isLoading={isLoading} />
+          </div>
+        ) : (
+          <StatsCards stats={stats} isLoading={isLoading} />
+        )}
 
         {/* Filters */}
         <FiltersBar
@@ -153,7 +171,7 @@ export default function Dashboard() {
         />
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Leads Table */}
           <div className="lg:col-span-2">
             <LeadsTable
@@ -171,7 +189,11 @@ export default function Dashboard() {
 
           {/* Charts Panel */}
           <div className="lg:col-span-1">
-            <ChartsPanel leads={leads} isLoading={isLoading} />
+            {isMobile ? (
+              <MobileChartsCarousel leads={leads} isLoading={isLoading} />
+            ) : (
+              <ChartsPanel leads={leads} isLoading={isLoading} />
+            )}
           </div>
         </div>
 

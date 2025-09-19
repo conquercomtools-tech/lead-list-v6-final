@@ -7,6 +7,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { MobileFiltersSheet } from "@/components/mobile/mobile-filters-sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface FilterState {
   search: string;
@@ -30,6 +32,7 @@ interface FiltersBarProps {
 
 export function FiltersBar({ filters, onFiltersChange, uniqueValues }: FiltersBarProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const updateFilter = (key: keyof FilterState, value: any) => {
     onFiltersChange({ ...filters, [key]: value });
@@ -58,6 +61,93 @@ export function FiltersBar({ filters, onFiltersChange, uniqueValues }: FiltersBa
     filters.fundingRange[1] < 1000000000 ||
     filters.revenueRange[0] > 0 ||
     filters.revenueRange[1] < 1000000000;
+
+  if (isMobile) {
+    return (
+      <GlassCard className="p-4 mb-6">
+        <div className="space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search leads..."
+              value={filters.search}
+              onChange={(e) => updateFilter('search', e.target.value)}
+              className="pl-10 glass border-border/30 h-12 text-base"
+            />
+          </div>
+
+          {/* Filter Chips */}
+          <div className="flex flex-wrap gap-2">
+            {/* Status Chip */}
+            {filters.emailStatus && (
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-primary/20 border border-primary/30 rounded-lg text-sm">
+                <span>Status: {filters.emailStatus}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0 hover:bg-white/10"
+                  onClick={() => updateFilter('emailStatus', '')}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+
+            {/* Industry Chip */}
+            {filters.industry && (
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-primary/20 border border-primary/30 rounded-lg text-sm">
+                <span>Industry: {filters.industry}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0 hover:bg-white/10"
+                  onClick={() => updateFilter('industry', '')}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+
+            {/* Country Chip */}
+            {filters.country && (
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-primary/20 border border-primary/30 rounded-lg text-sm">
+                <span>Country: {filters.country}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0 hover:bg-white/10"
+                  onClick={() => updateFilter('country', '')}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+
+            {/* Filters Button */}
+            <MobileFiltersSheet
+              filters={filters}
+              onFiltersChange={onFiltersChange}
+              uniqueValues={uniqueValues}
+            />
+
+            {/* Clear All */}
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                className="tap-lg glass border-border/30"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
+            )}
+          </div>
+        </div>
+      </GlassCard>
+    );
+  }
 
   return (
     <GlassCard className="p-4 sticky top-4 z-10 mb-6">

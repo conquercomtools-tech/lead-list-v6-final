@@ -125,4 +125,21 @@ All colors MUST be HSL.
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  /* Mobile Touch Targets */
+  .tap-md {
+    @apply min-w-[44px] min-h-[44px];
+  }
+
+  .tap-lg {
+    @apply min-w-[48px] min-h-[48px];
+  }
+
+  /* Mobile Glass with reduced blur for performance */
+  .glass-mobile {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: var(--glass-shadow);
+  }
 }

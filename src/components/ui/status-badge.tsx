@@ -4,10 +4,11 @@ import { Badge } from "@/components/ui/badge";
 interface StatusBadgeProps {
   status?: string;
   variant?: "default" | "verified" | "invalid" | "pending";
+  size?: "sm" | "md";
   className?: string;
 }
 
-export function StatusBadge({ status, variant, className }: StatusBadgeProps) {
+export function StatusBadge({ status, variant, size = "md", className }: StatusBadgeProps) {
   if (!status) return null;
 
   // Auto-detect variant based on status if not provided
@@ -34,11 +35,17 @@ export function StatusBadge({ status, variant, className }: StatusBadgeProps) {
     pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   };
 
+  const sizeClasses = {
+    sm: "text-[10px] px-1.5 py-0.5",
+    md: "text-xs px-2 py-1"
+  };
+
   return (
     <Badge
       className={cn(
-        "glass border transition-smooth",
+        "glass border transition-smooth shrink-0",
         variantClasses[finalVariant],
+        sizeClasses[size],
         className
       )}
     >
