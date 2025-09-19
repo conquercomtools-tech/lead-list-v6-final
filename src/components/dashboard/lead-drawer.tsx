@@ -20,6 +20,7 @@ import {
   aggregateCompanySnapshot,
   normalizeYouTubeSummary,
   normalizeCompetitors,
+  parseEventsText,
   money,
   fmtDate
 } from "@/lib/normalize";
@@ -55,6 +56,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const companyItems = normalizeCompanyDataFromMessages(lead?.company_data);
   const youtubeData = normalizeYouTubeSummary(lead?.youtube_video || null);
   const competitorsData = normalizeCompetitors(lead?.competitors);
+  const eventsData = parseEventsText(lead?.events);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -93,6 +95,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
             <TabsTrigger value="company">Company</TabsTrigger>
             <TabsTrigger value="youtube">YouTube Summary</TabsTrigger>
             <TabsTrigger value="competitors">Competitors</TabsTrigger>
+            <TabsTrigger value="search">Search</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -298,6 +301,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 
           <TabsContent value="competitors" className="space-y-6">
             <CompetitorsTab competitorsData={competitorsData} />
+          </TabsContent>
+
+          <TabsContent value="search" className="space-y-6">
+            <SearchTab eventsData={eventsData} />
           </TabsContent>
         </Tabs>
       </SheetContent>
@@ -760,6 +767,67 @@ function CompetitorsTab({ competitorsData }: { competitorsData: ReturnType<typeo
 
               {c.website && (
                 <div className="mt-2 text-xs text-white/50 truncate">{c.website}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+// Search Tab Component
+function SearchTab({ eventsData }: { eventsData: ReturnType<typeof parseEventsText> }) {
+  return (
+    <SectionCard title="Search">
+      {eventsData.length === 0 ? (
+        <div className="text-white/70">No search results or events available.</div>
+      ) : (
+        <div className="space-y-3">
+          {eventsData.map((e, i) => (
+            <div key={i} className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  {/* Person */}
+                  {e.person && (
+                    <div className="text-sm text-white/60 mb-1">{e.person}</div>
+                  )}
+
+                  {/* Event title */}
+                  <div className="text-base font-medium text-white mb-1">
+                    {e.event ?? 'Untitled event'}
+                  </div>
+
+                  {/* Date */}
+                  <div className="text-xs text-white/60 mb-2">
+                    {e.date ?? '—'}
+                  </div>
+
+                  {/* Summary */}
+                  {e.summary && (
+                    <div className="text-white/80">{e.summary}</div>
+                  )}
+                </div>
+
+                {/* YouTube button */}
+                {e.youtube && (
+                  <a
+                    href={e.youtube}
+                    target="_blank"
+                    rel="noopener"
+                    className="shrink-0 text-xs px-2 py-1 rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15"
+                    title="Open in YouTube"
+                  >
+                    Open
+                  </a>
+                )}
+              </div>
+
+              {/* Raw URL line (small) */}
+              {e.youtube && (
+                <div className="mt-2 text-xs text-white/50 truncate">
+                  {e.youtube}
+                </div>
               )}
             </div>
           ))}

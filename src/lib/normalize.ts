@@ -261,3 +261,58 @@ export function normalizeCompetitors(src: any): { items: CompetitorItem[]; inval
 
   return { items: deduped, invalid };
 }
+
+export const normalizeFreeText = (v: any): string => (v == null ? '' : (typeof v === 'string' ? v : String(v)));
+
+export const normalizeDateLoose = (s?: string|null): string => {
+  if (!s) return '—';
+  if (/unknown/i.test(s)) return 'Unknown';
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? s : d.toISOString().slice(0,10);
+};
+
+export type EventItem = {
+  person: string | null;
+  event: string | null;
+  date: string | null;     // formatted or raw
+  summary: string | null;
+  youtube: string | null;  // url or null
+};
+
+/** Parse `events` plain-text into structured items */
+export function parseEventsText(src: any): EventItem[] {
+  const raw = normalizeFreeText(src).trim();
+  if (!raw) return [];
+
+  // split blocks by '---' on its own line or surrounded by newlines
+  const blocks = raw.split(/\n?-{3,}\n?/g).map(b => b.trim()).filter(Boolean);
+
+  const items: EventItem[] = blocks.map((block) => {
+    const lines = block.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const kv: Record<string,string> = {};
+
+    for (const line of lines) {
+      const m = line.match(/^\s*([A-Za-z ]+)\s*:\s*(.*)$/);
+      if (m) {
+        const key = m[1].toLowerCase().replace(/\s+/g,'_'); // e.g. 'Person Used' -> 'person_used'
+        kv[key] = m[2].trim();
+      }
+    }
+
+    // extract & clean
+    let youtube = kv['youtube'] || null;
+    if (youtube && /none/i.test(youtube)) youtube = null;
+    const urlMatch = youtube ? youtube.match(/https?:\/\/\S+/) : null;
+    if (urlMatch) youtube = urlMatch[0];
+
+    return {
+      person: kv['person_used'] ?? null,
+      event: kv['event'] ?? null,
+      date: normalizeDateLoose(kv['date'] ?? null),
+      summary: kv['summary'] ?? null,
+      youtube
+    };
+  });
+
+  return items;
+}

@@ -52,6 +52,7 @@ export type Lead = {
   company_data?: any;
   youtube_video?: any;
   competitors?: any;
+  events?: string;
   'Facebook Url'?: string;
   'Twitter Url'?: string;
   Website?: string;
