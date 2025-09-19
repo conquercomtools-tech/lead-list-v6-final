@@ -316,3 +316,58 @@ export function parseEventsText(src: any): EventItem[] {
 
   return items;
 }
+
+export type ImportantUrl = { url: string; host: string; label: string };
+
+const normalizeUrlString = (u: string): string | null => {
+  if (!u) return null;
+  let url = u.trim();
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  try {
+    const parsed = new URL(url);
+    return parsed.href;
+  } catch {
+    return null;
+  }
+};
+
+const prettyLabel = (href: string) => {
+  try {
+    const u = new URL(href);
+    const path = u.pathname.replace(/\/$/, '');
+    return path ? `${u.host}${path}` : u.host;
+  } catch { return href; }
+};
+
+export function normalizeImportantUrls(src: any): { items: ImportantUrl[]; invalid: boolean } {
+  // First try JSON path: { results: [{ url: string }, ...] }
+  const { value, invalid } = safeJsonWithFlag<any>(src, {});
+  let urls: string[] = [];
+
+  if (value && Array.isArray(value.results)) {
+    urls = value.results.map((r: any) => r?.url).filter(Boolean);
+  }
+
+  // If JSON path empty, fall back to regex extraction from raw text
+  if (urls.length === 0) {
+    const text = typeof src === 'string' ? src : JSON.stringify(src ?? '');
+    const found = text.match(/https?:\/\/[^\s)]+/gi) ?? [];
+    urls = found;
+  }
+
+  // Normalize, dedupe, and map to display info
+  const seen = new Set<string>();
+  const items: ImportantUrl[] = [];
+  for (const raw of urls) {
+    const href = normalizeUrlString(String(raw) || '');
+    if (!href) continue;
+    if (seen.has(href)) continue;
+    seen.add(href);
+    const u = new URL(href);
+    items.push({ url: href, host: u.host, label: prettyLabel(href) });
+  }
+
+  // sort by host then path for consistency
+  items.sort((a, b) => a.label.localeCompare(b.label));
+  return { items, invalid };
+}

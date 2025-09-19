@@ -53,6 +53,8 @@ export type Lead = {
   youtube_video?: any;
   competitors?: any;
   events?: string;
+  important_urls?: any;
+  avatar_url?: string | null;
   'Facebook Url'?: string;
   'Twitter Url'?: string;
   Website?: string;

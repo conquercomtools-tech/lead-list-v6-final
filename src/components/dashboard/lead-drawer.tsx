@@ -21,6 +21,7 @@ import {
   normalizeYouTubeSummary,
   normalizeCompetitors,
   parseEventsText,
+  normalizeImportantUrls,
   money,
   fmtDate
 } from "@/lib/normalize";
@@ -57,6 +58,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const youtubeData = normalizeYouTubeSummary(lead?.youtube_video || null);
   const competitorsData = normalizeCompetitors(lead?.competitors);
   const eventsData = parseEventsText(lead?.events);
+  const importantUrls = normalizeImportantUrls(lead?.important_urls);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -96,6 +98,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
             <TabsTrigger value="youtube">YouTube Summary</TabsTrigger>
             <TabsTrigger value="competitors">Competitors</TabsTrigger>
             <TabsTrigger value="search">Search</TabsTrigger>
+            <TabsTrigger value="important-urls">Important URLs</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -305,6 +308,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 
           <TabsContent value="search" className="space-y-6">
             <SearchTab eventsData={eventsData} />
+          </TabsContent>
+
+          <TabsContent value="important-urls" className="space-y-6">
+            <ImportantUrlsTab importantUrls={importantUrls} />
           </TabsContent>
         </Tabs>
       </SheetContent>
@@ -829,6 +836,57 @@ function SearchTab({ eventsData }: { eventsData: ReturnType<typeof parseEventsTe
                   {e.youtube}
                 </div>
               )}
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+// Important URLs Tab Component
+function ImportantUrlsTab({ importantUrls }: { importantUrls: ReturnType<typeof normalizeImportantUrls> }) {
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("URL copied to clipboard!");
+    } catch (err) {
+      toast.error("Failed to copy URL");
+    }
+  };
+
+  return (
+    <SectionCard 
+      title="Important URLs" 
+      right={importantUrls.invalid ? <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Invalid JSON</Badge> : null}
+    >
+      {importantUrls.items.length === 0 ? (
+        <div className="text-white/70">No important URLs available.</div>
+      ) : (
+        <div className="space-y-2">
+          {importantUrls.items.map((it, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 backdrop-blur px-3 py-2">
+              <div className="min-w-0">
+                <div className="text-sm text-white truncate">{it.label}</div>
+                <div className="text-xs text-white/50 truncate">{it.url}</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => copyToClipboard(it.url)}
+                  className="text-xs px-2 py-1 rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15"
+                  title="Copy URL"
+                >
+                  Copy
+                </button>
+                <a
+                  href={it.url}
+                  target="_blank"
+                  rel="noopener"
+                  className="text-xs px-2 py-1 rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15"
+                >
+                  Open
+                </a>
+              </div>
             </div>
           ))}
         </div>

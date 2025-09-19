@@ -47,7 +47,10 @@ export function useLeads(
   } = useQuery({
     queryKey: ["leads", page, pageSize, sortColumn, sortDirection, debouncedFilters],
     queryFn: async () => {
-      let query = supabase.from(LEADS_TABLE).select("*", { count: "exact" });
+      let query = supabase.from(LEADS_TABLE).select(`
+        *,
+        avatar_url:basic_info->>profile_picture_url
+      `, { count: "exact" });
 
       // Apply search filter
       if (debouncedFilters.search) {

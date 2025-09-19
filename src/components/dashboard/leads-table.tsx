@@ -2,10 +2,11 @@ import { useState } from "react";
 import { ChevronUp, ChevronDown, ExternalLink, Copy, Mail, Phone } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
-import { AvatarInitials } from "@/components/ui/avatar-initials";
+import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Lead, formatCurrency, formatNumber, getInitials, getCountryFlag } from "@/lib/supabase";
+import { Lead, formatCurrency, formatNumber, getCountryFlag } from "@/lib/supabase";
+import { getInitials } from "@/lib/initials";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
@@ -159,8 +160,10 @@ export function LeadsTable({
               >
                 <td className="p-4">
                   <div className="flex items-center gap-3">
-                    <AvatarInitials 
-                      initials={getInitials(lead['First Name'], lead['Last Name'], lead.Company)}
+                    <Avatar 
+                      src={lead.avatar_url}
+                      alt={`${lead['First Name'] ?? ''} ${lead['Last Name'] ?? ''}`.trim() || lead.Company || 'Lead'}
+                      initialsText={getInitials(lead['First Name'], lead['Last Name'], lead.Company)}
                       size="sm"
                     />
                     <div>
