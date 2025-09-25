@@ -25,6 +25,17 @@ import {
   money,
   fmtDate
 } from "@/lib/normalize";
+import { 
+  normalizeWebAnalytics, 
+  normalizeCrunchbase,
+  fmtNum,
+  fmtPct,
+  fmtDur
+} from "@/lib/normalize-analytics";
+import { ResponsiveLines } from "@/components/charts/ResponsiveLines";
+import { ResponsiveBar } from "@/components/charts/ResponsiveBar";
+import { ResponsiveDonut } from "@/components/charts/ResponsiveDonut";
+import { StatCard, StatsRow } from "@/components/ui/stat-card";
 
 interface LeadDrawerProps {
   lead: Lead | null;
@@ -59,6 +70,11 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const competitorsData = normalizeCompetitors(lead?.competitors);
   const eventsData = parseEventsText(lead?.events);
   const importantUrls = normalizeImportantUrls(lead?.important_urls);
+  
+  // Analytics data
+  const similarwebData = normalizeWebAnalytics(lead?.['website_analytic(similarweb)']);
+  const semrushData = normalizeWebAnalytics(lead?.['website_analytic(semrush)']);
+  const crunchbaseData = normalizeCrunchbase(lead?.CRUNCHBASE);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -312,6 +328,18 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 
           <TabsContent value="important-urls" className="space-y-6">
             <ImportantUrlsTab importantUrls={importantUrls} />
+          </TabsContent>
+
+          <TabsContent value="similarweb" className="space-y-6">
+            <AnalyticsTab data={similarwebData} title="Similarweb" />
+          </TabsContent>
+
+          <TabsContent value="semrush" className="space-y-6">
+            <AnalyticsTab data={semrushData} title="SEMrush" />
+          </TabsContent>
+
+          <TabsContent value="crunchbase" className="space-y-6">
+            <CrunchbaseTab data={crunchbaseData} />
           </TabsContent>
         </Tabs>
       </SheetContent>
@@ -892,6 +920,276 @@ function ImportantUrlsTab({ importantUrls }: { importantUrls: ReturnType<typeof 
         </div>
       )}
     </SectionCard>
+  );
+}
+
+// Analytics Tab Component
+function AnalyticsTab({ data, title }: { data: ReturnType<typeof normalizeWebAnalytics>; title: string }) {
+  const { data: analytics, invalid } = data;
+
+  return (
+    <div className="space-y-6">
+      {/* Header KPIs */}
+      <SectionCard title={`${title} Overview`} right={invalid ? <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Invalid JSON</Badge> : null}>
+        <StatsRow>
+          <StatCard label="Visits" value={fmtNum(analytics.traffic?.visits)} />
+          <StatCard 
+            label="Bounce Rate" 
+            value={fmtPct(analytics.traffic?.bounce_rate)} 
+            tooltip="Percentage of sessions that were not engaged (GA4)"
+          />
+          <StatCard label="Pages/Visit" value={analytics.traffic?.pages_per_visit?.toString() ?? '—'} />
+          <StatCard label="Time on Site" value={fmtDur(analytics.traffic?.time_on_site_sec)} />
+          <StatCard label="Visits MoM" value={fmtPct(analytics.traffic?.visits_mom_change)} />
+          <StatCard label="6-mo Change" value={fmtPct(analytics.traffic?.visits_change_6m)} />
+        </StatsRow>
+      </SectionCard>
+
+      {/* Traffic by Channel */}
+      {(analytics.traffic?.channels?.length ?? 0) > 0 && (
+        <SectionCard title="Traffic by Channel">
+          {analytics.traffic!.channels!.length <= 5 ? (
+            <ResponsiveDonut 
+              data={analytics.traffic!.channels!.map(c => ({ name: c.channel, value: c.value }))} 
+            />
+          ) : (
+            <ResponsiveBar 
+              data={analytics.traffic!.channels!} 
+              x="channel" 
+              y="value" 
+            />
+          )}
+        </SectionCard>
+      )}
+
+      {/* Search Traffic History */}
+      {(analytics.traffic?.search_traffic_history?.length ?? 0) > 0 && (
+        <SectionCard title="Search Traffic (last 6 months)">
+          <ResponsiveLines
+            data={analytics.traffic!.search_traffic_history!.map(p => ({ 
+              date: fmtDate(p.date), 
+              search: p.search_traffic ?? 0, 
+              organic: p.organic_traffic ?? 0, 
+              paid: p.paid_traffic ?? 0 
+            }))}
+            lines={[
+              {dataKey:'search', name:'Search', color: 'hsl(var(--primary))'},
+              {dataKey:'organic', name:'Organic', color: 'hsl(var(--secondary))'},
+              {dataKey:'paid', name:'Paid', color: 'hsl(var(--accent))'}
+            ]}
+          />
+        </SectionCard>
+      )}
+
+      {/* Authority Section */}
+      {analytics.authority && (
+        <SectionCard title="Authority & Backlinks">
+          <StatsRow className="mb-4">
+            <StatCard label="Authority Score" value={analytics.authority.score?.toString() ?? '—'} />
+            <StatCard label="Backlinks" value={fmtNum(analytics.authority.backlinks?.total)} />
+            <StatCard label="Referring Domains" value={fmtNum(analytics.authority.backlinks?.referral_domains)} />
+            <StatCard label="MoM Backlinks" value={fmtPct(analytics.authority.backlinks?.mom_change)} />
+          </StatsRow>
+
+          {/* Authority History Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {(analytics.authority.history?.authority_score?.length ?? 0) > 0 && (
+              <ResponsiveLines
+                title="Authority Score History"
+                data={analytics.authority.history!.authority_score!.map(p => ({ 
+                  date: fmtDate(p.date), 
+                  score: p.value 
+                }))}
+                lines={[{dataKey:'score', name:'Authority Score'}]}
+              />
+            )}
+
+            {(analytics.authority.history?.backlinks?.length ?? 0) > 0 && (
+              <ResponsiveLines
+                title="Backlinks History"
+                data={analytics.authority.history!.backlinks!.map(p => ({ 
+                  date: fmtDate(p.date), 
+                  value: p.value 
+                }))}
+                lines={[{dataKey:'value', name:'Backlinks'}]}
+              />
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Top Pages Table */}
+      {(analytics.traffic?.top_pages_organic?.length ?? 0) > 0 && (
+        <SectionCard title="Top Organic Pages">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-2 text-white/70">URL</th>
+                  <th className="text-left py-2 text-white/70">Keywords</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics.traffic!.top_pages_organic!.slice(0, 10).map((page, i) => (
+                  <tr key={i} className="border-b border-white/5">
+                    <td className="py-2 text-white/90 truncate max-w-xs">{page.url}</td>
+                    <td className="py-2 text-white/70">{page.keywords_count ?? 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+// Crunchbase Tab Component
+function CrunchbaseTab({ data }: { data: ReturnType<typeof normalizeCrunchbase> }) {
+  const { data: cb, invalid } = data;
+
+  return (
+    <div className="space-y-6">
+      {/* Snapshot */}
+      <SectionCard title="Company Snapshot" right={invalid ? <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Invalid JSON</Badge> : null}>
+        <StatsRow>
+          <StatCard label="Employees" value={cb.employees_range ?? '—'} />
+          <StatCard label="Investors" value={fmtNum(cb.num_investors)} />
+          <StatCard label="Funding Rounds" value={fmtNum(cb.num_funding_rounds)} />
+          <StatCard 
+            label="Last Funding" 
+            value={`${cb.last_funding_type ?? '—'} • ${fmtDate(cb.last_funding_date)}`} 
+          />
+          <StatCard 
+            label="IPO Score" 
+            value={cb.ipo_prediction_score != null ? cb.ipo_prediction_score.toFixed(2) : '—'} 
+          />
+        </StatsRow>
+      </SectionCard>
+
+      {/* Growth & Heat */}
+      <SectionCard title="Growth & Heat Scores">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-4">
+            <div className="text-sm text-white/60 mb-2">Growth Current</div>
+            <div className="text-2xl font-bold text-white">{cb.growth_current ?? 0}</div>
+            <div className="w-full bg-white/10 rounded-full h-2 mt-2">
+              <div 
+                className="bg-gradient-to-r from-green-500 to-green-400 h-2 rounded-full" 
+                style={{ width: `${Math.min((cb.growth_current ?? 0), 100)}%` }}
+              />
+            </div>
+          </div>
+          
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-4">
+            <div className="text-sm text-white/60 mb-2">Heat Current</div>
+            <div className="text-2xl font-bold text-white">{cb.heat_current ?? cb.heat_score ?? 0}</div>
+            <div className="w-full bg-white/10 rounded-full h-2 mt-2">
+              <div 
+                className="bg-gradient-to-r from-red-500 to-orange-400 h-2 rounded-full" 
+                style={{ width: `${Math.min((cb.heat_current ?? cb.heat_score ?? 0), 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {cb.growth_score_delta_d90 != null && (
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+            <div className="text-sm text-white/60 mb-1">90-day Growth Change</div>
+            <div className={`text-lg font-semibold ${cb.growth_score_delta_d90 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {cb.growth_score_delta_d90 > 0 ? '+' : ''}{cb.growth_score_delta_d90}
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Categories & Tech Stack */}
+      <SectionCard title="Categories & Technology">
+        {cb.categories && cb.categories.length > 0 && (
+          <div className="mb-4">
+            <div className="text-sm text-white/60 mb-2">Categories</div>
+            <div className="flex flex-wrap gap-2">
+              {cb.categories.map((cat, i) => (
+                <span key={i} className="px-2 py-1 rounded-lg bg-white/10 text-white/80 text-sm">
+                  {cat}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {cb.tech_stack && cb.tech_stack.length > 0 && (
+          <div>
+            <div className="text-sm text-white/60 mb-2">Technology Stack</div>
+            <div className="flex flex-wrap gap-2">
+              {cb.tech_stack.map((tech, i) => (
+                <span key={i} className="px-2 py-1 rounded-lg bg-blue-500/20 text-blue-300 text-sm">
+                  {tech.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Similar Organizations */}
+      {(cb.similar_orgs?.length ?? 0) > 0 && (
+        <SectionCard title="Similar Organizations">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-2 text-white/70">Organization</th>
+                  <th className="text-left py-2 text-white/70">Similarity Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cb.similar_orgs!.slice(0, 10).map((org, i) => (
+                  <tr key={i} className="border-b border-white/5">
+                    <td className="py-2 text-white/90">{org.name}</td>
+                    <td className="py-2 text-white/70">{(org.score ?? 0).toFixed(3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Key Employee Changes */}
+      {(cb.key_employee_changes?.length ?? 0) > 0 && (
+        <SectionCard title="Key Employee Changes">
+          <div className="space-y-3">
+            {cb.key_employee_changes!.map((change, i) => (
+              <div key={i} className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm text-white/60 mb-1">{fmtDate(change.date)}</div>
+                    <div className="text-white/90 mb-1">{change.description ?? 'Employee change'}</div>
+                    {change.press_publisher && (
+                      <div className="text-xs text-white/50">
+                        {change.press_publisher} • {fmtDate(change.press_date)}
+                      </div>
+                    )}
+                  </div>
+                  {change.press_url && (
+                    <a
+                      href={change.press_url}
+                      target="_blank"
+                      rel="noopener"
+                      className="shrink-0 text-xs px-2 py-1 rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15"
+                    >
+                      Read
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+    </div>
   );
 }
 

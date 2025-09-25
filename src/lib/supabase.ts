@@ -58,6 +58,10 @@ export type Lead = {
   'Facebook Url'?: string;
   'Twitter Url'?: string;
   Website?: string;
+  // Analytics fields
+  'website_analytic(similarweb)'?: any;
+  'website_analytic(semrush)'?: any;
+  CRUNCHBASE?: any;
   Keywords?: string;
 };
 
