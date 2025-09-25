@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Copy, ExternalLink, Phone, Mail, MapPin, ChevronDown, Calendar, TrendingUp, Users, DollarSign, Building } from "lucide-react";
+import { Copy, ExternalLink, Phone, Mail, MapPin, ChevronDown, Calendar, TrendingUp, Users, DollarSign, Building, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Lead, formatCurrency, formatNumber, getCountryFlag } from "@/lib/supabase";
 import { 
@@ -45,6 +45,13 @@ interface LeadDrawerProps {
 
 export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const [activeTab, setActiveTab] = useState("overview");
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  useEffect(() => {
+    const el = tabRefs.current[activeTab];
+    el?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [activeTab]);
 
   if (!lead) return null;
 
@@ -107,15 +114,97 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
         </SheetHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-          <TabsList className="glass border-border/30">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="linkedin">LinkedIn Activity</TabsTrigger>
-            <TabsTrigger value="company">Company</TabsTrigger>
-            <TabsTrigger value="youtube">YouTube Summary</TabsTrigger>
-            <TabsTrigger value="competitors">Competitors</TabsTrigger>
-            <TabsTrigger value="search">Search</TabsTrigger>
-            <TabsTrigger value="important-urls">Important URLs</TabsTrigger>
-          </TabsList>
+          <div className="relative">
+            {/* Edge fades */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-black/60 to-transparent rounded-l-xl z-10" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-black/60 to-transparent rounded-r-xl z-10" />
+            
+            {/* Scroll buttons */}
+            <button
+              aria-label="Scroll tabs left"
+              onClick={() => tabScrollRef.current?.scrollBy({ left: -160, behavior: "smooth" })}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 p-1 rounded-lg bg-white/10 border border-white/15 hover:bg-white/15 tap-lg"
+              type="button"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              aria-label="Scroll tabs right"
+              onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 p-1 rounded-lg bg-white/10 border border-white/15 hover:bg-white/15 tap-lg"
+              type="button"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+
+            <TabsList
+              ref={tabScrollRef}
+              className="w-full overflow-x-auto whitespace-nowrap no-scrollbar rounded-xl bg-white/5 border border-white/10 px-8 flex gap-1 md:flex-wrap glass border-border/30"
+            >
+              <TabsTrigger 
+                value="overview" 
+                ref={(el) => (tabRefs.current["overview"] = el)}
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger 
+                value="linkedin" 
+                ref={(el) => (tabRefs.current["linkedin"] = el)}
+              >
+                LinkedIn Activity
+              </TabsTrigger>
+              <TabsTrigger 
+                value="company" 
+                ref={(el) => (tabRefs.current["company"] = el)}
+              >
+                Company
+              </TabsTrigger>
+              <TabsTrigger 
+                value="youtube" 
+                ref={(el) => (tabRefs.current["youtube"] = el)}
+              >
+                YouTube Summary
+              </TabsTrigger>
+              <TabsTrigger 
+                value="competitors" 
+                ref={(el) => (tabRefs.current["competitors"] = el)}
+              >
+                Competitors
+              </TabsTrigger>
+              <TabsTrigger 
+                value="search" 
+                ref={(el) => (tabRefs.current["search"] = el)}
+              >
+                Search
+              </TabsTrigger>
+              <TabsTrigger 
+                value="important-urls" 
+                ref={(el) => (tabRefs.current["important-urls"] = el)}
+              >
+                Important URLs
+              </TabsTrigger>
+              <TabsTrigger 
+                value="analytics_sw" 
+                ref={(el) => (tabRefs.current["analytics_sw"] = el)}
+              >
+                <span className="hidden md:inline">Analytics (Similarweb)</span>
+                <span className="md:hidden">Analytics (SW)</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="analytics_semrush" 
+                ref={(el) => (tabRefs.current["analytics_semrush"] = el)}
+              >
+                <span className="hidden md:inline">Analytics (SEMrush)</span>
+                <span className="md:hidden">Analytics (SE)</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="crunchbase" 
+                ref={(el) => (tabRefs.current["crunchbase"] = el)}
+              >
+                Crunchbase
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="overview" className="space-y-6">
             {/* Basic Info Section */}
@@ -330,11 +419,11 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
             <ImportantUrlsTab importantUrls={importantUrls} />
           </TabsContent>
 
-          <TabsContent value="similarweb" className="space-y-6">
+          <TabsContent value="analytics_sw" className="space-y-6">
             <AnalyticsTab data={similarwebData} title="Similarweb" />
           </TabsContent>
 
-          <TabsContent value="semrush" className="space-y-6">
+          <TabsContent value="analytics_semrush" className="space-y-6">
             <AnalyticsTab data={semrushData} title="SEMrush" />
           </TabsContent>
 

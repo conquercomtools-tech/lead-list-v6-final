@@ -142,4 +142,13 @@ All colors MUST be HSL.
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: var(--glass-shadow);
   }
+
+  /* Hide scrollbars for tab scrolling */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
