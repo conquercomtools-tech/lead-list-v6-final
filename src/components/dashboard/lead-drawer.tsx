@@ -27,11 +27,15 @@ import {
 } from "@/lib/normalize";
 import { 
   normalizeWebAnalytics, 
-  normalizeCrunchbase,
   fmtNum,
   fmtPct,
   fmtDur
 } from "@/lib/normalize-analytics";
+import { 
+  normalizeCrunchbase,
+  crunchbaseAggregates,
+  fmtDate as crunchbaseFmtDate
+} from "@/lib/normalize-crunchbase";
 import { ResponsiveLines } from "@/components/charts/ResponsiveLines";
 import { ResponsiveBar } from "@/components/charts/ResponsiveBar";
 import { ResponsiveDonut } from "@/components/charts/ResponsiveDonut";
@@ -1135,147 +1139,161 @@ function AnalyticsTab({ data, title }: { data: ReturnType<typeof normalizeWebAna
 }
 
 // Crunchbase Tab Component
-function CrunchbaseTab({ data }: { data: ReturnType<typeof normalizeCrunchbase> }) {
-  const { data: cb, invalid } = data;
+function CrunchbaseTab({ data }: { data: any }) {
+  const items = normalizeCrunchbase(data);
+  const agg = crunchbaseAggregates(items);
+  const s = agg.snapshot;
+  const invalid = items.length === 0;
 
   return (
     <div className="space-y-6">
       {/* Snapshot */}
-      <SectionCard title="Company Snapshot" right={invalid ? <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Invalid JSON</Badge> : null}>
-        <StatsRow>
-          <StatCard label="Employees" value={cb.employees_range ?? '—'} />
-          <StatCard label="Investors" value={fmtNum(cb.num_investors)} />
-          <StatCard label="Funding Rounds" value={fmtNum(cb.num_funding_rounds)} />
-          <StatCard 
-            label="Last Funding" 
-            value={`${cb.last_funding_type ?? '—'} • ${fmtDate(cb.last_funding_date)}`} 
-          />
-          <StatCard 
-            label="IPO Score" 
-            value={cb.ipo_prediction_score != null ? cb.ipo_prediction_score.toFixed(2) : '—'} 
-          />
-        </StatsRow>
+      <SectionCard title="Crunchbase Snapshot" right={
+        s.acquisition_probability_tier ? <Badge variant="outline" className="glass">{s.acquisition_probability_tier}</Badge> : null
+      }>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Heat Score" value={s.heat_score ?? "—"} />
+          <StatCard label="Heat (Current)" value={s.heat_current ?? "—"} />
+          <StatCard label="Growth (Current)" value={s.growth_current ?? "—"} />
+          <StatCard label="Investors" value={fmtNum(s.num_investors)} />
+          <StatCard label="Funding Rounds" value={fmtNum(s.num_funding_rounds)} />
+          <StatCard label="IPO Score" value={s.ipo_prediction_score?.toFixed(2) ?? "—"} />
+          <StatCard label="Acquisition Score" value={s.acquisition_prediction_score?.toFixed(2) ?? "—"} />
+          <StatCard label="Funding Score" value={s.funding_prediction_score?.toFixed(2) ?? "—"} />
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <div className="text-xs text-white/60 mb-1">Employees Range</div>
+            <div className="text-white/90">{s.employees_range}</div>
+          </div>
+          <div>
+            <div className="text-xs text-white/60 mb-1">Last Funding</div>
+            <div className="text-white/90">{s.last_funding_type} · {crunchbaseFmtDate(s.last_funding_date)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-white/60 mb-1">Profile</div>
+            {s.org_permalink ? (
+              <a 
+                className="text-primary hover:underline" 
+                target="_blank" 
+                rel="noreferrer"
+                href={`https://www.crunchbase.com/organization/${s.org_permalink}`}
+              >
+                {s.org_name} ↗
+              </a>
+            ) : (
+              <span className="text-white/70">{s.org_name}</span>
+            )}
+          </div>
+        </div>
+        
+        {invalid && (
+          <div className="mt-3">
+            <Badge variant="destructive" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
+              Invalid or missing data
+            </Badge>
+          </div>
+        )}
       </SectionCard>
 
-      {/* Growth & Heat */}
-      <SectionCard title="Growth & Heat Scores">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-4">
-            <div className="text-sm text-white/60 mb-2">Growth Current</div>
-            <div className="text-2xl font-bold text-white">{cb.growth_current ?? 0}</div>
-            <div className="w-full bg-white/10 rounded-full h-2 mt-2">
-              <div 
-                className="bg-gradient-to-r from-green-500 to-green-400 h-2 rounded-full" 
-                style={{ width: `${Math.min((cb.growth_current ?? 0), 100)}%` }}
-              />
+      {/* Locations & Categories */}
+      <SectionCard title="Locations & Categories">
+        <div className="space-y-3">
+          <div>
+            <div className="text-xs text-white/60 mb-2">Locations</div>
+            <div className="flex flex-wrap gap-2">
+              {agg.lists.locations.length ? (
+                agg.lists.locations.map(loc => (
+                  <Badge key={loc} variant="outline" className="glass">{loc}</Badge>
+                ))
+              ) : (
+                <span className="text-white/70">—</span>
+              )}
             </div>
           </div>
-          
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-4">
-            <div className="text-sm text-white/60 mb-2">Heat Current</div>
-            <div className="text-2xl font-bold text-white">{cb.heat_current ?? cb.heat_score ?? 0}</div>
-            <div className="w-full bg-white/10 rounded-full h-2 mt-2">
-              <div 
-                className="bg-gradient-to-r from-red-500 to-orange-400 h-2 rounded-full" 
-                style={{ width: `${Math.min((cb.heat_current ?? cb.heat_score ?? 0), 100)}%` }}
-              />
+          <div>
+            <div className="text-xs text-white/60 mb-2">Categories</div>
+            <div className="flex flex-wrap gap-2">
+              {agg.lists.categories.length ? (
+                agg.lists.categories.map(cat => (
+                  <Badge key={cat} variant="secondary" className="glass">{cat}</Badge>
+                ))
+              ) : (
+                <span className="text-white/70">—</span>
+              )}
             </div>
           </div>
         </div>
-
-        {cb.growth_score_delta_d90 != null && (
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
-            <div className="text-sm text-white/60 mb-1">90-day Growth Change</div>
-            <div className={`text-lg font-semibold ${cb.growth_score_delta_d90 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {cb.growth_score_delta_d90 > 0 ? '+' : ''}{cb.growth_score_delta_d90}
-            </div>
-          </div>
-        )}
       </SectionCard>
 
-      {/* Categories & Tech Stack */}
-      <SectionCard title="Categories & Technology">
-        {cb.categories && cb.categories.length > 0 && (
-          <div className="mb-4">
-            <div className="text-sm text-white/60 mb-2">Categories</div>
-            <div className="flex flex-wrap gap-2">
-              {cb.categories.map((cat, i) => (
-                <span key={i} className="px-2 py-1 rounded-lg bg-white/10 text-white/80 text-sm">
-                  {cat}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Tech Categories Chart */}
+      {agg.charts.techCategoryFreq.length > 0 && (
+        <SectionCard title="Tech Categories (Top 10)">
+          <ResponsiveBar data={agg.charts.techCategoryFreq} x="label" y="value" />
+        </SectionCard>
+      )}
 
-        {cb.tech_stack && cb.tech_stack.length > 0 && (
-          <div>
-            <div className="text-sm text-white/60 mb-2">Technology Stack</div>
-            <div className="flex flex-wrap gap-2">
-              {cb.tech_stack.map((tech, i) => (
-                <span key={i} className="px-2 py-1 rounded-lg bg-blue-500/20 text-blue-300 text-sm">
-                  {tech.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </SectionCard>
+      {/* Company Categories Chart */}
+      {agg.charts.categoryFreq.length > 0 && (
+        <SectionCard title="Company Categories">
+          <ResponsiveBar data={agg.charts.categoryFreq} x="label" y="value" />
+        </SectionCard>
+      )}
 
-      {/* Similar Organizations */}
-      {(cb.similar_orgs?.length ?? 0) > 0 && (
-        <SectionCard title="Similar Organizations">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-2 text-white/70">Organization</th>
-                  <th className="text-left py-2 text-white/70">Similarity Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cb.similar_orgs!.slice(0, 10).map((org, i) => (
-                  <tr key={i} className="border-b border-white/5">
-                    <td className="py-2 text-white/90">{org.name}</td>
-                    <td className="py-2 text-white/70">{(org.score ?? 0).toFixed(3)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Recommended Hubs Chart */}
+      {agg.charts.hubsByOrgCount.length > 0 && (
+        <SectionCard title="Recommended Hubs by Org Count">
+          <ResponsiveBar data={agg.charts.hubsByOrgCount} x="label" y="value" />
+        </SectionCard>
+      )}
+
+      {/* Similar Organizations Chart */}
+      {agg.charts.similarByScore.length > 0 && (
+        <SectionCard title="Similar Organizations (Score)">
+          <ResponsiveBar data={agg.charts.similarByScore} x="label" y="value" />
+        </SectionCard>
+      )}
+
+      {/* Tech Stack */}
+      {agg.lists.tech.length > 0 && (
+        <SectionCard title="Technology Stack">
+          <div className="flex flex-wrap gap-2">
+            {agg.lists.tech.map(tech => (
+              <Badge key={tech} className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+                {tech}
+              </Badge>
+            ))}
           </div>
         </SectionCard>
       )}
 
-      {/* Key Employee Changes */}
-      {(cb.key_employee_changes?.length ?? 0) > 0 && (
+      {/* Key Employee Changes Timeline */}
+      {agg.charts.timeline.length > 0 && (
         <SectionCard title="Key Employee Changes">
-          <div className="space-y-3">
-            {cb.key_employee_changes!.map((change, i) => (
-              <div key={i} className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm text-white/60 mb-1">{fmtDate(change.date)}</div>
-                    <div className="text-white/90 mb-1">{change.description ?? 'Employee change'}</div>
-                    {change.press_publisher && (
-                      <div className="text-xs text-white/50">
-                        {change.press_publisher} • {fmtDate(change.press_date)}
-                      </div>
-                    )}
-                  </div>
-                  {change.press_url && (
-                    <a
-                      href={change.press_url}
-                      target="_blank"
-                      rel="noopener"
-                      className="shrink-0 text-xs px-2 py-1 rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15"
+          <ul className="space-y-4">
+            {agg.charts.timeline.map((event, i) => (
+              <li key={i} className="flex gap-4">
+                <div className="w-24 shrink-0 text-xs text-white/60">
+                  {crunchbaseFmtDate(event.date)}
+                </div>
+                <div className="flex-1">
+                  <div className="text-white/90 font-medium">{event.label}</div>
+                  <div className="text-white/70 text-sm">{event.description}</div>
+                  {event.url && (
+                    <a 
+                      href={event.url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="text-primary hover:underline text-xs mt-1 inline-block"
                     >
-                      Read
+                      Read source ↗
                     </a>
                   )}
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </SectionCard>
       )}
     </div>
