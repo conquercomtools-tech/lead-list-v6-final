@@ -37,6 +37,12 @@ import {
   prettyEmployeesRange,
   fmtDate as crunchbaseFmtDate
 } from "@/lib/normalize-crunchbase";
+import { 
+  normalizeGoogleAds, 
+  aggregateGoogleAds, 
+  prettyRelative,
+  mid 
+} from "@/lib/normalize-ads";
 import { ResponsiveLines } from "@/components/charts/ResponsiveLines";
 import { ResponsiveBar } from "@/components/charts/ResponsiveBar";
 import { ResponsiveDonut } from "@/components/charts/ResponsiveDonut";
@@ -87,6 +93,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const similarwebData = normalizeWebAnalytics(lead?.['website_analytic(similarweb)']);
   const semrushData = normalizeWebAnalytics(lead?.['website_analytic(semrush)']);
   const crunchbaseData = normalizeCrunchbase(lead?.CRUNCHBASE);
+  const googleAdsData = normalizeGoogleAds(lead?.google_ads ?? lead?.googel_ads);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -201,6 +208,12 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
               >
                 <span className="hidden md:inline">Analytics (SEMrush)</span>
                 <span className="md:hidden">Analytics (SE)</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="googleads" 
+                ref={(el) => (tabRefs.current["googleads"] = el)}
+              >
+                Google Ads
               </TabsTrigger>
               <TabsTrigger 
                 value="crunchbase" 
@@ -430,6 +443,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 
           <TabsContent value="analytics_semrush" className="space-y-6">
             <AnalyticsTab data={semrushData} title="SEMrush" />
+          </TabsContent>
+
+          <TabsContent value="googleads" className="space-y-6">
+            <GoogleAdsTab data={googleAdsData} />
           </TabsContent>
 
           <TabsContent value="crunchbase" className="space-y-6">
@@ -1135,6 +1152,221 @@ function AnalyticsTab({ data, title }: { data: ReturnType<typeof normalizeWebAna
           </div>
         </SectionCard>
       )}
+    </div>
+  );
+}
+
+// Google Ads Tab Component
+function GoogleAdsTab({ data }: { data: ReturnType<typeof normalizeGoogleAds> }) {
+  const agg = aggregateGoogleAds(data);
+  const isStale = (() => {
+    const d = agg.kpis.lastShown ? new Date(agg.kpis.lastShown) : null;
+    if (!d) return false;
+    const ageDays = (Date.now() - d.getTime()) / 86400000;
+    return ageDays > 45;
+  })();
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <SectionCard 
+        title="Google Ads" 
+        right={
+          <div className="flex gap-2 items-center">
+            {agg.kpis.lastShown && (
+              <span className="text-xs px-2 py-1 rounded-md bg-white/10 border border-white/15 text-white/80">
+                Last shown: {prettyRelative(agg.kpis.lastShown)}
+              </span>
+            )}
+            {isStale && (
+              <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">
+                Stale data
+              </Badge>
+            )}
+          </div>
+        }
+      >
+        {/* KPI strip */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Creatives" value={agg.kpis.creatives.toString()} />
+          <StatCard label="Platforms" value={agg.kpis.platforms.toString()} />
+          <StatCard label="Regions" value={agg.kpis.regions.toString()} />
+          {agg.kpis.lastShown && (
+            <StatCard label="Last Shown" value={prettyRelative(agg.kpis.lastShown) ?? "—"} />
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SectionCard title="Impressions by Platform">
+          {agg.platformRows.length > 0 ? (
+            <>
+              <ResponsiveBar
+                data={agg.platformRows.map(r => ({ 
+                  name: r.name, 
+                  value: Math.round(r.value) 
+                }))}
+                x="name"
+                y="value"
+              />
+              <div className="text-xs text-white/60 mt-2">
+                Most volume appears on {agg.platformRows[0]?.name || "top platform"}; ranges shown as midpoints.
+              </div>
+            </>
+          ) : (
+            <div className="text-white/70 py-8 text-center">Not enough data yet.</div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Impressions by Region">
+          {agg.regionRows.length > 0 ? (
+            <>
+              <ResponsiveBar
+                data={agg.regionRows.map(r => ({ 
+                  name: r.name, 
+                  value: Math.round(r.value) 
+                }))}
+                x="name"
+                y="value"
+              />
+              <div className="text-xs text-white/60 mt-2">
+                Coverage highest in {agg.regionRows[0]?.name || "top region"}.
+              </div>
+            </>
+          ) : (
+            <div className="text-white/70 py-8 text-center">Not enough data yet.</div>
+          )}
+        </SectionCard>
+      </div>
+
+      {/* Creatives gallery */}
+      {data.length === 0 ? (
+        <SectionCard title="Creatives">
+          <div className="text-white/70 py-8 text-center">
+            No Google Ads creatives found for this advertiser.
+          </div>
+        </SectionCard>
+      ) : (
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium text-white/90">Creatives ({data.length})</h4>
+          {data.slice(0, 10).map((creative, idx) => (
+            <SectionCard
+              key={idx}
+              title={`${creative.type ?? "Creative"}${creative.advertiser?.name ? ` · ${creative.advertiser.name}` : ""}`}
+              right={
+                creative.lastShown ? (
+                  <span className="text-xs text-white/60">
+                    Last shown: {prettyRelative(creative.lastShown)}
+                  </span>
+                ) : null
+              }
+            >
+              {creative.url && (
+                <div className="mb-3">
+                  <a 
+                    href={creative.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-primary hover:underline text-sm inline-flex items-center gap-1"
+                  >
+                    View in Ads Transparency Center
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+
+              {/* Advertiser info */}
+              {creative.advertiser && (creative.advertiser.name || creative.advertiser.legalName) && (
+                <div className="mb-3 space-y-1">
+                  {creative.advertiser.name && (
+                    <div className="text-sm text-white/90">
+                      <span className="text-white/60">Advertiser: </span>
+                      {creative.advertiser.name}
+                    </div>
+                  )}
+                  {creative.advertiser.regionCode && (
+                    <div className="text-xs text-white/70">
+                      Region: {creative.advertiser.regionCode}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Targeting summary */}
+              {creative.targeting && Object.keys(creative.targeting).length > 0 && (
+                <div className="mb-3">
+                  <div className="text-xs text-white/60 mb-2">Targeting</div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {creative.targeting.locations && (
+                      <span className="px-2 py-1 rounded bg-white/10 border border-white/15 text-white/80">
+                        Locations: {creative.targeting.locations.including ? "✓ include" : ""}{creative.targeting.locations.excluding ? " / ✖ exclude" : ""}
+                      </span>
+                    )}
+                    {creative.targeting.demographics && (
+                      <span className="px-2 py-1 rounded bg-white/10 border border-white/15 text-white/80">
+                        Demographics: {creative.targeting.demographics.including ? "✓" : "—"}{creative.targeting.demographics.excluding ? " / ✖" : ""}
+                      </span>
+                    )}
+                    {creative.targeting.contextualSignals && (
+                      <span className="px-2 py-1 rounded bg-white/10 border border-white/15 text-white/80">
+                        Contextual: {creative.targeting.contextualSignals.including ? "✓" : "—"}{creative.targeting.contextualSignals.excluding ? " / ✖" : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Platforms per creative */}
+              {creative.stats?.byPlatform && creative.stats.byPlatform.length > 0 && (
+                <div className="mb-3">
+                  <div className="text-xs text-white/60 mb-2">Platforms (midpoint impressions)</div>
+                  <div className="flex flex-wrap gap-2">
+                    {creative.stats.byPlatform.slice(0, 5).map((p, i) => {
+                      const v = Math.round(mid(p.impression));
+                      return (
+                        <span 
+                          key={i} 
+                          className="px-2 py-1 rounded-md bg-white/10 border border-white/15 text-xs text-white/80"
+                        >
+                          {p.name}: ~{v.toLocaleString()}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Variants */}
+              {creative.variants && creative.variants.length > 0 && (
+                <div>
+                  <div className="text-xs text-white/60 mb-2">Assets</div>
+                  <div className="flex flex-wrap gap-2">
+                    {creative.variants.slice(0, 6).map((variant, i) => (
+                      <a
+                        key={i}
+                        href={variant}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-1 rounded bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 inline-flex items-center gap-1"
+                      >
+                        Asset {i + 1}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </SectionCard>
+          ))}
+        </div>
+      )}
+
+      {/* Footnote */}
+      <div className="text-xs text-white/50 p-3 rounded-lg bg-white/5 border border-white/10">
+        Notes: Google Ads Transparency Center reports impressions in <strong>ranges</strong>; this view charts midpoints for readability. 
+        Formats, regions, and last-shown dates come from ATC. {isStale ? "Data may be stale." : ""}
+      </div>
     </div>
   );
 }

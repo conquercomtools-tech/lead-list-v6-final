@@ -62,6 +62,8 @@ export type Lead = {
   'website_analytic(similarweb)'?: any;
   'website_analytic(semrush)'?: any;
   CRUNCHBASE?: any;
+  google_ads?: any;
+  googel_ads?: any;
   Keywords?: string;
 };
 
