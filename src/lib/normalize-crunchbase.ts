@@ -1,5 +1,5 @@
 // src/lib/normalize-crunchbase.ts
-export type CbTech = { name: string; categories?: string[] };
+export type CbTech = { name: string; categories: string[] };
 export type CbSimilar = { name: string; uuid?: string; score?: number; permalink?: string };
 export type CbHub = { name: string; org_count?: number; permalink?: string };
 export type CbKeyChange = { date?: string; press_url?: string; description?: string; press_publisher?: string; press_date?: string };
@@ -12,6 +12,7 @@ export type CrunchbaseItem = {
   heat_score?: number;
   heat_current?: number;
   growth_current?: number;
+  growth_score_delta_d90?: number;
   employees_range?: string;    // e.g., "c_00011_00050"
   num_investors?: number;
   num_funding_rounds?: number;
@@ -34,6 +35,17 @@ export function safeJson<T=unknown>(val:any, fallback:T):T{
   if (typeof val==='object') return val as T;
   if (typeof val==='string'){ try { return JSON.parse(val) as T; } catch { return fallback; } }
   return fallback;
+}
+
+// Map Crunchbase's compact employee ranges to human strings
+export function prettyEmployeesRange(code?: string | null): string {
+  if (!code) return '—';
+  // patterns like c_00011_00050
+  const m = code.match(/c_(\d{5})_(\d{5})/);
+  if (!m) return code;
+  const a = parseInt(m[1], 10);
+  const b = parseInt(m[2], 10);
+  return `${a}-${b}`;
 }
 
 export const toArray = (v:any): string[] => {
@@ -67,6 +79,7 @@ export function normalizeCrunchbase(src:any): CrunchbaseItem[] {
       heat_score: Number(raw?.heat_score ?? NaN),
       heat_current: Number(raw?.heat_current ?? NaN),
       growth_current: Number(raw?.growth_current ?? NaN),
+      growth_score_delta_d90: Number(raw?.growth_score_delta_d90 ?? NaN),
       employees_range: raw?.employees_range ?? null,
       num_investors: Number(raw?.num_investors ?? NaN),
       num_funding_rounds: Number(raw?.num_funding_rounds ?? NaN),

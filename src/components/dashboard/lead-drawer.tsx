@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AvatarInitials } from "@/components/ui/avatar-initials";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Copy, ExternalLink, Phone, Mail, MapPin, ChevronDown, Calendar, TrendingUp, Users, DollarSign, Building, ChevronLeft, ChevronRight } from "lucide-react";
+import { Copy, ExternalLink, Phone, Mail, MapPin, ChevronDown, Calendar, TrendingUp, Users, DollarSign, Building, ChevronLeft, ChevronRight, Globe, Rocket, LineChart, Wallet, Building2, FlaskConical, Target, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Lead, formatCurrency, formatNumber, getCountryFlag } from "@/lib/supabase";
 import { 
@@ -34,6 +34,7 @@ import {
 import { 
   normalizeCrunchbase,
   crunchbaseAggregates,
+  prettyEmployeesRange,
   fmtDate as crunchbaseFmtDate
 } from "@/lib/normalize-crunchbase";
 import { ResponsiveLines } from "@/components/charts/ResponsiveLines";
@@ -1138,159 +1139,351 @@ function AnalyticsTab({ data, title }: { data: ReturnType<typeof normalizeWebAna
   );
 }
 
+// Helper to group tech stack by categories
+function groupByCategory(stack: Array<{ name: string; categories: string[] }>): Record<string, Array<{ name: string; categories: string[] }>> {
+  const out: Record<string, Array<{ name: string; categories: string[] }>> = {};
+  for (const t of stack) {
+    (t.categories.length ? t.categories : ["uncategorized"]).forEach(cat => {
+      out[cat] = out[cat] || [];
+      out[cat].push(t);
+    });
+  }
+  return out;
+}
+
 // Crunchbase Tab Component
 function CrunchbaseTab({ data }: { data: any }) {
   const items = normalizeCrunchbase(data);
+  
+  if (items.length === 0) {
+    return (
+      <SectionCard title="Crunchbase">
+        <div className="text-center py-8 text-white/70">
+          No Crunchbase data available.
+        </div>
+      </SectionCard>
+    );
+  }
+
   const agg = crunchbaseAggregates(items);
+  const cb = items[0];
   const s = agg.snapshot;
-  const invalid = items.length === 0;
+
+  // Generate auto-insights
+  const insights: string[] = [];
+  if (typeof cb.growth_current === 'number' && !isNaN(cb.growth_current)) {
+    const delta = typeof cb.growth_score_delta_d90 === 'number' && !isNaN(cb.growth_score_delta_d90)
+      ? cb.growth_score_delta_d90 > 0 ? `up ${cb.growth_score_delta_d90.toFixed(0)} over 90 days` : `down ${Math.abs(cb.growth_score_delta_d90).toFixed(0)} over 90 days`
+      : '';
+    insights.push(`Growth score ${cb.growth_current.toFixed(0)}${delta ? ', ' + delta : ''}.`);
+  }
+  
+  const techGroups = groupByCategory(cb.tech_stack ?? []);
+  const topTechCat = Object.entries(techGroups).sort((a,b) => b[1].length - a[1].length)[0];
+  if (topTechCat) {
+    insights.push(`Tech stack leans ${topTechCat[0]} (${topTechCat[1].length} tools).`);
+  }
+  
+  const topSimilar = (cb.similar_orgs ?? [])[0];
+  if (topSimilar?.score != null && !isNaN(topSimilar.score)) {
+    insights.push(`Closest peer: ${topSimilar.name} (${topSimilar.score.toFixed(2)}).`);
+  }
+
+  const growthDelta = typeof cb.growth_score_delta_d90 === 'number' && !isNaN(cb.growth_score_delta_d90)
+    ? cb.growth_score_delta_d90
+    : undefined;
 
   return (
     <div className="space-y-6">
-      {/* Snapshot */}
-      <SectionCard title="Crunchbase Snapshot" right={
-        s.acquisition_probability_tier ? <Badge variant="outline" className="glass">{s.acquisition_probability_tier}</Badge> : null
-      }>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Heat Score" value={s.heat_score ?? "—"} />
-          <StatCard label="Heat (Current)" value={s.heat_current ?? "—"} />
-          <StatCard label="Growth (Current)" value={s.growth_current ?? "—"} />
-          <StatCard label="Investors" value={fmtNum(s.num_investors)} />
-          <StatCard label="Funding Rounds" value={fmtNum(s.num_funding_rounds)} />
-          <StatCard label="IPO Score" value={s.ipo_prediction_score?.toFixed(2) ?? "—"} />
-          <StatCard label="Acquisition Score" value={s.acquisition_prediction_score?.toFixed(2) ?? "—"} />
-          <StatCard label="Funding Score" value={s.funding_prediction_score?.toFixed(2) ?? "—"} />
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <div className="text-xs text-white/60 mb-1">Employees Range</div>
-            <div className="text-white/90">{s.employees_range}</div>
-          </div>
-          <div>
-            <div className="text-xs text-white/60 mb-1">Last Funding</div>
-            <div className="text-white/90">{s.last_funding_type} · {crunchbaseFmtDate(s.last_funding_date)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-white/60 mb-1">Profile</div>
-            {s.org_permalink ? (
+      {/* Header with org name and link */}
+      <SectionCard 
+        title={s.org_name || 'Organization'} 
+        right={
+          <div className="flex items-center gap-2">
+            {s.acquisition_probability_tier && (
+              <Badge variant="outline" className="glass">{s.acquisition_probability_tier}</Badge>
+            )}
+            {s.org_permalink && (
               <a 
-                className="text-primary hover:underline" 
-                target="_blank" 
-                rel="noreferrer"
                 href={`https://www.crunchbase.com/organization/${s.org_permalink}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs px-3 py-1 rounded-lg bg-white/10 border border-white/15 text-white/80 hover:bg-white/15 flex items-center gap-1"
               >
-                {s.org_name} ↗
+                <Globe className="h-3 w-3" />
+                View on Crunchbase
               </a>
-            ) : (
-              <span className="text-white/70">{s.org_name}</span>
             )}
           </div>
-        </div>
-        
-        {invalid && (
-          <div className="mt-3">
-            <Badge variant="destructive" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
-              Invalid or missing data
-            </Badge>
-          </div>
-        )}
-      </SectionCard>
-
-      {/* Locations & Categories */}
-      <SectionCard title="Locations & Categories">
-        <div className="space-y-3">
-          <div>
-            <div className="text-xs text-white/60 mb-2">Locations</div>
-            <div className="flex flex-wrap gap-2">
-              {agg.lists.locations.length ? (
-                agg.lists.locations.map(loc => (
-                  <Badge key={loc} variant="outline" className="glass">{loc}</Badge>
-                ))
-              ) : (
-                <span className="text-white/70">—</span>
-              )}
+        }
+      >
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-3 text-sm">
+            <div className="flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-white/60" />
+              <span className="text-white/90">{prettyEmployeesRange(cb.employees_range)}</span>
             </div>
+            {cb.last_funding_type && (
+              <div className="flex items-center gap-1.5">
+                <Wallet className="h-4 w-4 text-white/60" />
+                <span className="text-white/90">{cb.last_funding_type} · {crunchbaseFmtDate(cb.last_funding_date)}</span>
+              </div>
+            )}
           </div>
-          <div>
-            <div className="text-xs text-white/60 mb-2">Categories</div>
-            <div className="flex flex-wrap gap-2">
-              {agg.lists.categories.length ? (
-                agg.lists.categories.map(cat => (
-                  <Badge key={cat} variant="secondary" className="glass">{cat}</Badge>
-                ))
-              ) : (
-                <span className="text-white/70">—</span>
-              )}
-            </div>
+          
+          {/* Locations & Categories */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {(cb.locations ?? []).map(loc => (
+              <Badge key={loc} variant="outline" className="glass text-xs">
+                <MapPin className="h-3 w-3 mr-1" />{loc}
+              </Badge>
+            ))}
+            {(cb.categories ?? []).map(cat => (
+              <Badge key={cat} variant="secondary" className="glass text-xs">{cat}</Badge>
+            ))}
           </div>
         </div>
       </SectionCard>
 
-      {/* Tech Categories Chart */}
-      {agg.charts.techCategoryFreq.length > 0 && (
-        <SectionCard title="Tech Categories (Top 10)">
-          <ResponsiveBar data={agg.charts.techCategoryFreq} x="label" y="value" />
-        </SectionCard>
-      )}
-
-      {/* Company Categories Chart */}
-      {agg.charts.categoryFreq.length > 0 && (
-        <SectionCard title="Company Categories">
-          <ResponsiveBar data={agg.charts.categoryFreq} x="label" y="value" />
-        </SectionCard>
-      )}
-
-      {/* Recommended Hubs Chart */}
-      {agg.charts.hubsByOrgCount.length > 0 && (
-        <SectionCard title="Recommended Hubs by Org Count">
-          <ResponsiveBar data={agg.charts.hubsByOrgCount} x="label" y="value" />
-        </SectionCard>
-      )}
-
-      {/* Similar Organizations Chart */}
-      {agg.charts.similarByScore.length > 0 && (
-        <SectionCard title="Similar Organizations (Score)">
-          <ResponsiveBar data={agg.charts.similarByScore} x="label" y="value" />
-        </SectionCard>
-      )}
+      {/* KPI Cards (≤7) */}
+      <SectionCard title="Key Metrics">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {typeof cb.growth_current === 'number' && !isNaN(cb.growth_current) && (
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-4 w-4 text-white/60" />
+                <div className="text-xs text-white/60">Growth Now</div>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <div className="text-lg font-semibold text-white">{cb.growth_current.toFixed(0)}</div>
+                {growthDelta !== undefined && (
+                  <div className={`text-xs ${growthDelta > 0 ? 'text-green-400' : growthDelta < 0 ? 'text-red-400' : 'text-white/60'}`}>
+                    {growthDelta > 0 ? '▲' : growthDelta < 0 ? '▼' : '—'} {Math.abs(growthDelta).toFixed(0)} (90d)
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {typeof cb.heat_current === 'number' && !isNaN(cb.heat_current) && (
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Zap className="h-4 w-4 text-white/60" />
+                <div className="text-xs text-white/60">Heat Score</div>
+              </div>
+              <div className="text-lg font-semibold text-white">{cb.heat_current.toFixed(0)}</div>
+            </div>
+          )}
+          
+          {typeof cb.num_investors === 'number' && !isNaN(cb.num_investors) && (
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="h-4 w-4 text-white/60" />
+                <div className="text-xs text-white/60">Investors</div>
+              </div>
+              <div className="text-lg font-semibold text-white">{fmtNum(cb.num_investors)}</div>
+            </div>
+          )}
+          
+          {typeof cb.num_funding_rounds === 'number' && !isNaN(cb.num_funding_rounds) && (
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Wallet className="h-4 w-4 text-white/60" />
+                <div className="text-xs text-white/60">Funding Rounds</div>
+              </div>
+              <div className="text-lg font-semibold text-white">{fmtNum(cb.num_funding_rounds)}</div>
+            </div>
+          )}
+          
+          {typeof cb.ipo_prediction_score === 'number' && !isNaN(cb.ipo_prediction_score) && (
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Rocket className="h-4 w-4 text-white/60" />
+                <div className="text-xs text-white/60">IPO Pred.</div>
+              </div>
+              <div className="text-lg font-semibold text-white">{cb.ipo_prediction_score.toFixed(2)}</div>
+            </div>
+          )}
+          
+          {typeof cb.acquisition_prediction_score === 'number' && !isNaN(cb.acquisition_prediction_score) && (
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="h-4 w-4 text-white/60" />
+                <div className="text-xs text-white/60">Acq. Pred.</div>
+              </div>
+              <div className="text-lg font-semibold text-white">{cb.acquisition_prediction_score.toFixed(2)}</div>
+            </div>
+          )}
+          
+          {typeof cb.funding_prediction_score === 'number' && !isNaN(cb.funding_prediction_score) && (
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="h-4 w-4 text-white/60" />
+                <div className="text-xs text-white/60">Funding Pred.</div>
+              </div>
+              <div className="text-lg font-semibold text-white">{cb.funding_prediction_score.toFixed(2)}</div>
+            </div>
+          )}
+        </div>
+      </SectionCard>
 
       {/* Tech Stack */}
-      {agg.lists.tech.length > 0 && (
+      {Object.keys(techGroups).length > 0 && (
         <SectionCard title="Technology Stack">
-          <div className="flex flex-wrap gap-2">
-            {agg.lists.tech.map(tech => (
-              <Badge key={tech} className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                {tech}
-              </Badge>
+          <div className="space-y-4">
+            {/* Category bars */}
+            <div className="space-y-2">
+              <div className="text-xs text-white/60 mb-2">Categories</div>
+              {Object.entries(techGroups)
+                .sort((a,b) => b[1].length - a[1].length)
+                .slice(0, 5)
+                .map(([cat, techs]) => (
+                  <div key={cat} className="flex items-center gap-3">
+                    <div className="w-24 text-xs text-white/70 truncate">{cat}</div>
+                    <div className="flex-1 h-6 bg-white/5 rounded-lg overflow-hidden">
+                      <div 
+                        className="h-full bg-primary/60"
+                        style={{ width: `${Math.min(100, (techs.length / Math.max(...Object.values(techGroups).map(t => t.length))) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-white/60 w-8 text-right">{techs.length}</div>
+                  </div>
+                ))}
+            </div>
+            
+            {/* Tech chips */}
+            <div>
+              <div className="text-xs text-white/60 mb-2">Technologies</div>
+              <div className="flex flex-wrap gap-2">
+                {(cb.tech_stack ?? []).slice(0, 20).map(tech => (
+                  <Badge key={tech.name} className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                    {tech.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Similar Organizations */}
+      {(cb.similar_orgs ?? []).length > 0 && (
+        <SectionCard title="Similar Organizations">
+          <div className="space-y-2">
+            {cb.similar_orgs.slice(0, 5).map((org, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
+                <div className="flex-1 min-w-0">
+                  {org.permalink ? (
+                    <a 
+                      href={`https://www.crunchbase.com/organization/${org.permalink}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary hover:underline truncate block"
+                    >
+                      {org.name}
+                    </a>
+                  ) : (
+                    <span className="text-white/90 truncate block">{org.name}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="text-xs text-white/70">{org.score?.toFixed(2) ?? '—'}</div>
+                  {org.score != null && !isNaN(org.score) && (
+                    <div className="h-1.5 w-24 bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-white/80 rounded-full"
+                        style={{ width: `${Math.min(100, Math.max(0, org.score * 100))}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </SectionCard>
       )}
 
+      {/* Recommended Hubs */}
+      {(cb.recommended_hubs ?? []).length > 0 && (
+        <SectionCard title="Recommended Hubs">
+          <div className="space-y-2">
+            {cb.recommended_hubs
+              .filter(h => typeof h.org_count === 'number' && !isNaN(h.org_count))
+              .sort((a,b) => (b.org_count ?? 0) - (a.org_count ?? 0))
+              .slice(0, 5)
+              .map((hub, i) => (
+                <div key={i} className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    {hub.permalink ? (
+                      <a 
+                        href={`https://www.crunchbase.com/hub/${hub.permalink}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline truncate block"
+                      >
+                        {hub.name}
+                      </a>
+                    ) : (
+                      <span className="text-white/90 truncate block">{hub.name}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-xs text-white/70">{fmtNum(hub.org_count)}</div>
+                    <div className="h-1.5 w-24 bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary/60 rounded-full"
+                        style={{ width: `${Math.min(100, ((hub.org_count ?? 0) / Math.max(...cb.recommended_hubs.map(h => h.org_count ?? 0))) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </SectionCard>
+      )}
+
       {/* Key Employee Changes Timeline */}
-      {agg.charts.timeline.length > 0 && (
-        <SectionCard title="Key Employee Changes">
-          <ul className="space-y-4">
-            {agg.charts.timeline.map((event, i) => (
-              <li key={i} className="flex gap-4">
-                <div className="w-24 shrink-0 text-xs text-white/60">
-                  {crunchbaseFmtDate(event.date)}
+      {(cb.key_employee_changes ?? []).filter(e => e.date || e.press_date).length > 0 && (
+        <SectionCard title="People Moves">
+          <div className="space-y-4">
+            {cb.key_employee_changes
+              .filter(e => e.date || e.press_date)
+              .sort((a,b) => (b.date || b.press_date || '').localeCompare(a.date || a.press_date || ''))
+              .map((event, i) => (
+                <div key={i} className="flex gap-4 pb-4 border-b border-white/5 last:border-0">
+                  <div className="w-24 shrink-0 text-xs text-white/60">
+                    {crunchbaseFmtDate(event.date || event.press_date)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white/90 font-medium text-sm">{event.press_publisher ?? 'Update'}</div>
+                    {event.description && (
+                      <div className="text-white/70 text-sm mt-1">{event.description}</div>
+                    )}
+                    {event.press_url && (
+                      <a 
+                        href={event.press_url} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-primary hover:underline text-xs mt-1 inline-flex items-center gap-1"
+                      >
+                        Read source <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="text-white/90 font-medium">{event.label}</div>
-                  <div className="text-white/70 text-sm">{event.description}</div>
-                  {event.url && (
-                    <a 
-                      href={event.url} 
-                      target="_blank" 
-                      rel="noreferrer" 
-                      className="text-primary hover:underline text-xs mt-1 inline-block"
-                    >
-                      Read source ↗
-                    </a>
-                  )}
-                </div>
+              ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Auto-insights */}
+      {insights.length > 0 && (
+        <SectionCard title="Quick Insights">
+          <ul className="space-y-2">
+            {insights.map((insight, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <span className="text-primary mt-0.5">•</span>
+                <span className="text-white/80">{insight}</span>
               </li>
             ))}
           </ul>
