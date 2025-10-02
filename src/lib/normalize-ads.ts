@@ -47,7 +47,9 @@ export function mid(r?: ImpressionRange): number {
 
 export function normalizeGoogleAds(src: any): GoogleAdCreative[] {
   const arr = safeJson<any[]>(src, []);
-  return arr.map((x) => ({
+  // Filter out NO_ADS entries
+  const validAds = arr.filter((x) => x?.type !== "NO_ADS");
+  return validAds.map((x) => ({
     url: x?.url ?? null,
     type: x?.type ?? null,
     variants: Array.isArray(x?.variants) ? x.variants.filter(Boolean) : [],
