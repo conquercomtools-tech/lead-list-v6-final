@@ -30,11 +30,17 @@ export type Database = {
           "Company State": string | null
           company_data: Json | null
           company_linkedin_post: Json | null
+          competitors: Json | null
           Country: string | null
-          Email: string | null
+          CRUNCHBASE: Json | null
+          Email: string
           "Email Status": string | null
+          events: string | null
           "Facebook Url": string | null
           "First Name": string | null
+          googel_ads: Json | null
+          google_ads: Json | null
+          important_urls: Json | null
           Industry: string | null
           Keywords: string | null
           "Last Name": string | null
@@ -50,6 +56,8 @@ export type Database = {
           "Total Funding": number | null
           "Twitter Url": string | null
           Website: string | null
+          "website_analytic(semrush)": Json | null
+          youtube_video: Json | null
         }
         Insert: {
           "# Employees"?: number | null
@@ -66,11 +74,17 @@ export type Database = {
           "Company State"?: string | null
           company_data?: Json | null
           company_linkedin_post?: Json | null
+          competitors?: Json | null
           Country?: string | null
-          Email?: string | null
+          CRUNCHBASE?: Json | null
+          Email: string
           "Email Status"?: string | null
+          events?: string | null
           "Facebook Url"?: string | null
           "First Name"?: string | null
+          googel_ads?: Json | null
+          google_ads?: Json | null
+          important_urls?: Json | null
           Industry?: string | null
           Keywords?: string | null
           "Last Name"?: string | null
@@ -86,6 +100,8 @@ export type Database = {
           "Total Funding"?: number | null
           "Twitter Url"?: string | null
           Website?: string | null
+          "website_analytic(semrush)"?: Json | null
+          youtube_video?: Json | null
         }
         Update: {
           "# Employees"?: number | null
@@ -102,11 +118,17 @@ export type Database = {
           "Company State"?: string | null
           company_data?: Json | null
           company_linkedin_post?: Json | null
+          competitors?: Json | null
           Country?: string | null
-          Email?: string | null
+          CRUNCHBASE?: Json | null
+          Email?: string
           "Email Status"?: string | null
+          events?: string | null
           "Facebook Url"?: string | null
           "First Name"?: string | null
+          googel_ads?: Json | null
+          google_ads?: Json | null
+          important_urls?: Json | null
           Industry?: string | null
           Keywords?: string | null
           "Last Name"?: string | null
@@ -122,6 +144,8 @@ export type Database = {
           "Total Funding"?: number | null
           "Twitter Url"?: string | null
           Website?: string | null
+          "website_analytic(semrush)"?: Json | null
+          youtube_video?: Json | null
         }
         Relationships: []
       }
