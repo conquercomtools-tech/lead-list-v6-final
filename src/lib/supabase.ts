@@ -64,6 +64,7 @@ export type Lead = {
   CRUNCHBASE?: any;
   google_ads?: any;
   googel_ads?: any;
+  Ev_Estimation?: any;
   Keywords?: string;
 };
 

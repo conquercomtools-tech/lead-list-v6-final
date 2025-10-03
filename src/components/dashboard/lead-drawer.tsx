@@ -43,6 +43,12 @@ import {
   prettyRelative,
   mid 
 } from "@/lib/normalize-ads";
+import {
+  normalizeEVEstimation,
+  fmtCurrency,
+  fmtConfidence
+} from "@/lib/normalize-ev";
+import { EVEstimatorTab } from "@/components/dashboard/ev-estimator-tab";
 import { ResponsiveLines } from "@/components/charts/ResponsiveLines";
 import { ResponsiveBar } from "@/components/charts/ResponsiveBar";
 import { ResponsiveDonut } from "@/components/charts/ResponsiveDonut";
@@ -94,6 +100,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const semrushData = normalizeWebAnalytics(lead?.['website_analytic(semrush)']);
   const crunchbaseData = normalizeCrunchbase(lead?.CRUNCHBASE);
   const googleAdsData = normalizeGoogleAds(lead?.google_ads ?? lead?.googel_ads);
+  const evEstimationData = normalizeEVEstimation(lead?.Ev_Estimation);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -220,6 +227,12 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                 ref={(el) => (tabRefs.current["crunchbase"] = el)}
               >
                 Crunchbase
+              </TabsTrigger>
+              <TabsTrigger 
+                value="ev_estimator" 
+                ref={(el) => (tabRefs.current["ev_estimator"] = el)}
+              >
+                EV Estimator
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1429,7 +1442,7 @@ function CrunchbaseTab({ data }: { data: any }) {
     <div className="space-y-6">
       {/* Header with org name and link */}
       <SectionCard 
-        title={s.org_name || 'Organization'} 
+        title={s.org_name || 'Organization'}
         right={
           <div className="flex items-center gap-2">
             {s.acquisition_probability_tier && (
