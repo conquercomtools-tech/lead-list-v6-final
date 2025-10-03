@@ -103,50 +103,53 @@ export type CrunchbaseBlock = {
 export function normalizeWebAnalytics(src: any): { data: WebAnalyticsBlock; invalid: boolean } {
   const { value, invalid } = safeJsonWithFlag<any>(src, {});
   
+  // Handle array format (database stores array of records, take the first/latest one)
+  const record = Array.isArray(value) ? value[0] : value;
+  
   const normalized: WebAnalyticsBlock = {
-    domain: value?.domain || value?.website || '',
+    domain: record?.domain || record?.website || '',
     traffic: {
-      visits: value?.traffic?.visits || value?.visits,
-      channels: Array.isArray(value?.traffic?.channels) ? value.traffic.channels : 
-                 Array.isArray(value?.channels) ? value.channels : [],
-      bounce_rate: value?.traffic?.bounce_rate || value?.bounce_rate,
-      pages_per_visit: value?.traffic?.pages_per_visit || value?.pages_per_visit,
-      time_on_site_sec: value?.traffic?.time_on_site_sec || value?.time_on_site_sec,
-      visits_mom_change: value?.traffic?.visits_mom_change || value?.visits_mom_change,
-      visits_change_6m: value?.traffic?.visits_change_6m || value?.visits_change_6m,
-      search_traffic_history: Array.isArray(value?.traffic?.search_traffic_history) ? 
-        value.traffic.search_traffic_history : 
-        Array.isArray(value?.search_traffic_history) ? value.search_traffic_history : [],
-      top_pages_organic: Array.isArray(value?.traffic?.top_pages_organic) ?
-        value.traffic.top_pages_organic :
-        Array.isArray(value?.top_pages_organic) ? value.top_pages_organic : [],
-      organic_keywords: Array.isArray(value?.traffic?.organic_keywords) ?
-        value.traffic.organic_keywords :
-        Array.isArray(value?.organic_keywords) ? value.organic_keywords : [],
+      visits: record?.traffic?.visits || record?.visits,
+      channels: Array.isArray(record?.traffic?.channels) ? record.traffic.channels : 
+                 Array.isArray(record?.channels) ? record.channels : [],
+      bounce_rate: record?.traffic?.bounce_rate || record?.bounce_rate,
+      pages_per_visit: record?.traffic?.pages_per_visit || record?.pages_per_visit,
+      time_on_site_sec: record?.traffic?.time_on_site_sec || record?.time_on_site_sec,
+      visits_mom_change: record?.traffic?.visits_mom_change || record?.visits_mom_change,
+      visits_change_6m: record?.traffic?.visits_change_6m || record?.visits_change_6m,
+      search_traffic_history: Array.isArray(record?.traffic?.search_traffic_history) ? 
+        record.traffic.search_traffic_history : 
+        Array.isArray(record?.search_traffic_history) ? record.search_traffic_history : [],
+      top_pages_organic: Array.isArray(record?.traffic?.top_pages_organic) ?
+        record.traffic.top_pages_organic :
+        Array.isArray(record?.top_pages_organic) ? record.top_pages_organic : [],
+      organic_keywords: Array.isArray(record?.traffic?.organic_keywords) ?
+        record.traffic.organic_keywords :
+        Array.isArray(record?.organic_keywords) ? record.organic_keywords : [],
     },
     authority: {
-      score: value?.authority?.score || value?.authority_score,
+      score: record?.authority?.score || record?.authority_score,
       backlinks: {
-        total: value?.authority?.backlinks?.total || value?.backlinks?.total || value?.backlinks,
-        referral_domains: value?.authority?.backlinks?.referral_domains || value?.backlinks?.referral_domains || value?.referring_domains,
-        mom_change: value?.authority?.backlinks?.mom_change || value?.backlinks?.mom_change,
+        total: record?.authority?.backlinks?.total || record?.backlinks?.total || record?.backlinks,
+        referral_domains: record?.authority?.backlinks?.referral_domains || record?.backlinks?.referral_domains || record?.referring_domains,
+        mom_change: record?.authority?.backlinks?.mom_change || record?.backlinks?.mom_change,
       },
       history: {
-        authority_score: Array.isArray(value?.authority?.history?.authority_score) ?
-          value.authority.history.authority_score :
-          Array.isArray(value?.authority_score_history) ? value.authority_score_history : [],
-        backlinks: Array.isArray(value?.authority?.history?.backlinks) ?
-          value.authority.history.backlinks :
-          Array.isArray(value?.backlinks_history) ? value.backlinks_history : [],
-        referral_domains: Array.isArray(value?.authority?.history?.referral_domains) ?
-          value.authority.history.referral_domains :
-          Array.isArray(value?.referral_domains_history) ? value.referral_domains_history : [],
+        authority_score: Array.isArray(record?.authority?.history?.authority_score) ?
+          record.authority.history.authority_score :
+          Array.isArray(record?.authority_score_history) ? record.authority_score_history : [],
+        backlinks: Array.isArray(record?.authority?.history?.backlinks) ?
+          record.authority.history.backlinks :
+          Array.isArray(record?.backlinks_history) ? record.backlinks_history : [],
+        referral_domains: Array.isArray(record?.authority?.history?.referral_domains) ?
+          record.authority.history.referral_domains :
+          Array.isArray(record?.referral_domains_history) ? record.referral_domains_history : [],
       },
-      top_backlink_pages: Array.isArray(value?.authority?.top_backlink_pages) ?
-        value.authority.top_backlink_pages :
-        Array.isArray(value?.top_backlink_pages) ? value.top_backlink_pages : [],
+      top_backlink_pages: Array.isArray(record?.authority?.top_backlink_pages) ?
+        record.authority.top_backlink_pages :
+        Array.isArray(record?.top_backlink_pages) ? record.top_backlink_pages : [],
     },
-    last_updated: value?.last_updated || value?.updated_at,
+    last_updated: record?.last_updated || record?.updated_at,
   };
 
   return { data: normalized, invalid };
