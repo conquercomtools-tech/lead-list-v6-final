@@ -58,10 +58,23 @@ export type EVEstimationData = {
 };
 
 export function normalizeEVEstimation(src: any): { data: EVEstimationData; invalid: boolean } {
-  const { value, invalid } = safeJsonWithFlag<any>(src, {});
+  // Handle different input formats
+  let record = src;
+  let hasError = false;
+  
+  // If it's a string, try to parse it
+  if (typeof src === 'string') {
+    try {
+      record = JSON.parse(src);
+    } catch {
+      return { data: {}, invalid: true };
+    }
+  }
   
   // Handle array format (database stores array of records, take the first/latest one)
-  const record = Array.isArray(value) ? value[0] : value;
+  if (Array.isArray(record)) {
+    record = record[0];
+  }
   
   // Handle nested message structure from OpenAI-style response
   const content = record?.message?.content || record;
@@ -82,7 +95,7 @@ export function normalizeEVEstimation(src: any): { data: EVEstimationData; inval
       : [],
   };
 
-  return { data: normalized, invalid };
+  return { data: normalized, invalid: hasError };
 }
 
 // Format currency
