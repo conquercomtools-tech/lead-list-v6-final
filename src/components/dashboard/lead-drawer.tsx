@@ -161,7 +161,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 
             <TabsList
               ref={tabScrollRef}
-              className="w-full overflow-x-auto whitespace-nowrap no-scrollbar rounded-xl bg-white/5 border border-white/10 px-8 flex gap-1 md:flex-wrap glass border-border/30"
+              className="w-full overflow-x-auto overflow-y-hidden whitespace-nowrap no-scrollbar rounded-xl bg-white/5 border border-white/10 px-8 flex flex-nowrap gap-1 glass border-border/30"
             >
               <TabsTrigger 
                 value="overview" 
