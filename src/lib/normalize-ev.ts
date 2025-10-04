@@ -1,5 +1,5 @@
 // EV Estimation normalization and utilities
-import { safeJsonWithFlag } from "./normalize-analytics";
+
 
 export type EVEstimate = {
   low: number;
@@ -58,44 +58,100 @@ export type EVEstimationData = {
 };
 
 export function normalizeEVEstimation(src: any): { data: EVEstimationData; invalid: boolean } {
-  // Handle different input formats
   let record = src;
-  let hasError = false;
-  
-  // If it's a string, try to parse it
-  if (typeof src === 'string') {
-    try {
-      record = JSON.parse(src);
-    } catch {
-      return { data: {}, invalid: true };
+  let invalid = false;
+
+  const tryParseJSON = (s: string): any | null => {
+    try { return JSON.parse(s); } catch { return null; }
+  };
+
+  const extractJsonFromString = (s: string): any | null => {
+    if (!s) return null;
+    let text = String(s).trim();
+    // strip code fences if present
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+    // Attempt direct parse
+    const direct = tryParseJSON(text);
+    if (direct) return direct;
+    // Fallback: find first JSON object in the string
+    const first = text.indexOf('{');
+    const last = text.lastIndexOf('}');
+    if (first !== -1 && last !== -1 && last > first) {
+      const candidate = text.slice(first, last + 1);
+      return tryParseJSON(candidate);
     }
+    return null;
+  };
+
+  // Top-level string payload
+  if (typeof record === 'string') {
+    const parsed = tryParseJSON(record) ?? extractJsonFromString(record);
+    if (parsed) record = parsed; else return { data: {}, invalid: true };
   }
-  
-  // Handle array format (database stores array of records, take the first/latest one)
+
+  // Array payload (take first non-empty)
   if (Array.isArray(record)) {
-    record = record[0];
+    record = record.find(Boolean) ?? record[0];
   }
-  
-  // Handle nested message structure from OpenAI-style response
-  const content = record?.message?.content || record;
-  
+
+  // Prefer `content`, else OpenAI-style `message.content`, else the record itself
+  let content: any = record?.content ?? record?.message?.content ?? record;
+
+  // If content is an array (e.g. [{type:'text', text:'{...}'}])
+  if (Array.isArray(content)) {
+    const firstItem = content.find(Boolean);
+    if (typeof firstItem === 'string') {
+      content = tryParseJSON(firstItem) ?? extractJsonFromString(firstItem) ?? {};
+    } else if (firstItem && typeof firstItem === 'object') {
+      const text = (firstItem as any).text ?? (firstItem as any).content;
+      if (typeof text === 'string') {
+        content = tryParseJSON(text) ?? extractJsonFromString(text) ?? {};
+      } else {
+        content = firstItem;
+      }
+    } else {
+      content = {};
+    }
+  } else if (typeof content === 'string') {
+    content = tryParseJSON(content) ?? extractJsonFromString(content) ?? {};
+  } else if (!content || typeof content !== 'object') {
+    content = {};
+  }
+
   const normalized: EVEstimationData = {
     domain: content?.domain,
     company: content?.company,
     country: content?.country,
     industry: content?.industry,
-    input_summary: content?.input_summary || {},
+    input_summary: content?.input_summary || content?.inputs_summary || {},
     final_rationale: Array.isArray(content?.final_rationale) ? content.final_rationale : [],
-    final_ev_estimate_usd: content?.final_ev_estimate_usd || {},
-    arr_multiple_cross_check: content?.arr_multiple_cross_check || {},
-    confidence_and_key_risks: content?.confidence_and_key_risks || {},
-    funding_round_valuation_logic: content?.funding_round_valuation_logic || {},
-    important_data_issues_and_assumptions: Array.isArray(content?.important_data_issues_and_assumptions) 
-      ? content.important_data_issues_and_assumptions 
-      : [],
+    final_ev_estimate_usd:
+      content?.final_ev_estimate_usd ||
+      content?.final_ev_estimate ||
+      content?.ev_estimate_usd ||
+      content?.ev_estimate ||
+      {},
+    arr_multiple_cross_check:
+      content?.arr_multiple_cross_check ||
+      content?.arr_multiple_check ||
+      {},
+    confidence_and_key_risks:
+      content?.confidence_and_key_risks ||
+      content?.confidence ||
+      {},
+    funding_round_valuation_logic:
+      content?.funding_round_valuation_logic ||
+      content?.funding_round_logic ||
+      {},
+    important_data_issues_and_assumptions:
+      Array.isArray(content?.important_data_issues_and_assumptions)
+        ? content.important_data_issues_and_assumptions
+        : Array.isArray(content?.data_issues)
+        ? content.data_issues
+        : [],
   };
 
-  return { data: normalized, invalid: hasError };
+  return { data: normalized, invalid };
 }
 
 // Format currency

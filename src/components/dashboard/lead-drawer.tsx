@@ -465,6 +465,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
           <TabsContent value="crunchbase" className="space-y-6">
             <CrunchbaseTab data={crunchbaseData} />
           </TabsContent>
+
+          <TabsContent value="ev_estimator" className="space-y-6">
+            <EVEstimatorTab data={evEstimationData} />
+          </TabsContent>
         </Tabs>
       </SheetContent>
     </Sheet>
