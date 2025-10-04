@@ -41,7 +41,8 @@ import {
   normalizeGoogleAds, 
   aggregateGoogleAds, 
   prettyRelative,
-  mid 
+  mid,
+  normalizeMetaAds
 } from "@/lib/normalize-ads";
 import {
   normalizeEVEstimation,
@@ -49,6 +50,7 @@ import {
   fmtConfidence
 } from "@/lib/normalize-ev";
 import { EVEstimatorTab } from "@/components/dashboard/ev-estimator-tab";
+import { MetaAdsTab } from "@/components/dashboard/meta-ads-tab";
 import { ResponsiveLines } from "@/components/charts/ResponsiveLines";
 import { ResponsiveBar } from "@/components/charts/ResponsiveBar";
 import { ResponsiveDonut } from "@/components/charts/ResponsiveDonut";
@@ -101,6 +103,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const crunchbaseData = normalizeCrunchbase(lead?.CRUNCHBASE);
   const googleAdsData = normalizeGoogleAds(lead?.google_ads ?? lead?.googel_ads);
   const evEstimationData = normalizeEVEstimation(lead?.Ev_Estimation);
+  const metaAdsData = normalizeMetaAds(lead?.meta_ads);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -233,6 +236,12 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                 ref={(el) => (tabRefs.current["ev_estimator"] = el)}
               >
                 EV Estimator
+              </TabsTrigger>
+              <TabsTrigger 
+                value="meta_ads" 
+                ref={(el) => (tabRefs.current["meta_ads"] = el)}
+              >
+                Meta Ads
               </TabsTrigger>
             </TabsList>
           </div>
@@ -468,6 +477,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 
           <TabsContent value="ev_estimator" className="space-y-6">
             <EVEstimatorTab data={evEstimationData} />
+          </TabsContent>
+
+          <TabsContent value="meta_ads" className="space-y-6">
+            <MetaAdsTab data={metaAdsData} />
           </TabsContent>
         </Tabs>
       </SheetContent>

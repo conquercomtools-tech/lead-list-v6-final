@@ -140,3 +140,31 @@ export function prettyRelative(date?: string | null): string | null {
   const months = Math.floor(days / 30);
   return `${months}mo ago`;
 }
+
+export interface MetaAd {
+  ad_id?: string | null;
+  page_name?: string;
+  ad_creative_link_title?: string;
+  ad_creative_link_description?: string;
+  ad_snapshot_url?: string;
+  ad_delivery_start_time?: string;
+  spend?: string | number | null;
+  snapshot?: {
+    title?: string;
+    body?: { text?: string };
+    cta_text?: string;
+    link_url?: string;
+    images?: any[];
+    videos?: any[];
+  };
+  [key: string]: any;
+}
+
+export function normalizeMetaAds(src: any): MetaAd[] {
+  const arr = safeJson<any[]>(src, []);
+  return arr.map((item) => ({
+    ...item,
+    ad_creative_link_title: item?.snapshot?.title || item?.ad_creative_link_title,
+    ad_creative_link_description: item?.snapshot?.body?.text || item?.ad_creative_link_description,
+  }));
+}
