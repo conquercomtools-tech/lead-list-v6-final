@@ -41,9 +41,9 @@ import {
   normalizeGoogleAds, 
   aggregateGoogleAds, 
   prettyRelative,
-  mid,
-  normalizeMetaAds
+  mid
 } from "@/lib/normalize-ads";
+import { normalizeMetaAds } from "@/lib/normalize-meta-ads";
 import {
   normalizeEVEstimation,
   fmtCurrency,

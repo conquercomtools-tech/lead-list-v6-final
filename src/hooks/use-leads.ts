@@ -50,7 +50,8 @@ export function useLeads(
       let query = supabase.from(LEADS_TABLE).select(`
         *,
         avatar_url:basic_info->>profile_picture_url,
-        google_ads:googel_ads
+        google_ads:googel_ads,
+        meta_ads
       `, { count: "exact" });
 
       // Apply search filter
