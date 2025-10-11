@@ -142,29 +142,112 @@ export function prettyRelative(date?: string | null): string | null {
 }
 
 export interface MetaAd {
-  ad_id?: string | null;
+  title?: string;
+  description?: string;
   page_name?: string;
-  ad_creative_link_title?: string;
-  ad_creative_link_description?: string;
-  ad_snapshot_url?: string;
-  ad_delivery_start_time?: string;
-  spend?: string | number | null;
-  snapshot?: {
-    title?: string;
-    body?: { text?: string };
-    cta_text?: string;
-    link_url?: string;
-    images?: any[];
-    videos?: any[];
+  url?: string;
+  ad_library_url?: string;
+  start_date?: string;
+  end_date?: string;
+  is_active?: boolean;
+  entity_type?: string;
+  categories?: string[];
+  advertiser?: {
+    name?: string;
+    id?: string;
   };
-  [key: string]: any;
+  targeting?: {
+    age_audience?: any;
+    gender_audience?: any;
+    geo_locations?: any;
+  };
+  impressions?: number;
+  spend?: number;
+}
+
+function extractSnapshotText(snapshot: any): string | null {
+  if (!snapshot) return null;
+  
+  if (typeof snapshot === 'string') {
+    // Extract text between quotes after "text":"
+    const match = snapshot.match(/"text":"([^"]+)"/);
+    if (match) return match[1];
+  }
+  
+  if (typeof snapshot === 'object') {
+    // Try to find body.text
+    if (snapshot.body?.text) return snapshot.body.text;
+    // Try to find direct text property
+    if (snapshot.text) return snapshot.text;
+  }
+  
+  return null;
+}
+
+function extractSnapshotUrl(snapshot: any): string | null {
+  if (!snapshot) return null;
+  
+  if (typeof snapshot === 'string') {
+    // Extract URL from snapshot string
+    const match = snapshot.match(/https?:\/\/[^\s"]+/);
+    if (match) return match[0];
+  }
+  
+  if (typeof snapshot === 'object' && snapshot.link_url) {
+    return snapshot.link_url;
+  }
+  
+  return null;
+}
+
+function parseTargeting(aaaInfo: any) {
+  if (!aaaInfo) return null;
+  
+  try {
+    const parsed = typeof aaaInfo === 'string' ? JSON.parse(aaaInfo) : aaaInfo;
+    return {
+      age_audience: parsed.age_audience || null,
+      gender_audience: parsed.gender_audience || null,
+      geo_locations: parsed.geo_locations || null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function normalizeMetaAds(src: any): MetaAd[] {
   const arr = safeJson<any[]>(src, []);
-  return arr.map((item) => ({
-    ...item,
-    ad_creative_link_title: item?.snapshot?.title || item?.ad_creative_link_title,
-    ad_creative_link_description: item?.snapshot?.body?.text || item?.ad_creative_link_description,
-  }));
+  
+  return arr.map((item) => {
+    const snapshotText = extractSnapshotText(item?.snapshot);
+    const snapshotUrl = extractSnapshotUrl(item?.snapshot);
+    
+    // Parse advertiser
+    let advertiserName = null;
+    let advertiserId = null;
+    if (item?.advertiser) {
+      const adv = typeof item.advertiser === 'string' ? JSON.parse(item.advertiser) : item.advertiser;
+      if (adv?.page) {
+        advertiserName = adv.page.name || null;
+        advertiserId = adv.page.id || null;
+      }
+    }
+    
+    return {
+      title: snapshotText || item?.page_name || 'Untitled Ad',
+      description: item?.page_name || null,
+      page_name: item?.page_name || null,
+      url: snapshotUrl || item?.url || null,
+      ad_library_url: item?.ad_library_url || null,
+      start_date: item?.start_date ? String(item.start_date) : null,
+      end_date: item?.end_date ? String(item.end_date) : null,
+      is_active: item?.is_active === true || item?.is_active === 'true',
+      entity_type: item?.entity_type || null,
+      categories: Array.isArray(item?.categories) ? item.categories : null,
+      advertiser: advertiserName ? { name: advertiserName, id: advertiserId } : null,
+      targeting: parseTargeting(item?.aaa_info),
+      impressions: item?.total || null,
+      spend: item?.spend || null,
+    };
+  });
 }
