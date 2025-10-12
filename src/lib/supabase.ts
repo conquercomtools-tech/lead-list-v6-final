@@ -66,6 +66,7 @@ export type Lead = {
   googel_ads?: any;
   Ev_Estimation?: any;
   meta_ads?: any;
+  funding_acquisition?: any;
   Keywords?: string;
 };
 

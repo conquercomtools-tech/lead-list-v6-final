@@ -51,6 +51,7 @@ import {
 } from "@/lib/normalize-ev";
 import { EVEstimatorTab } from "@/components/dashboard/ev-estimator-tab";
 import { MetaAdsTab } from "@/components/dashboard/meta-ads-tab";
+import { FundingTab } from "@/components/dashboard/funding-tab";
 import { ResponsiveLines } from "@/components/charts/ResponsiveLines";
 import { ResponsiveBar } from "@/components/charts/ResponsiveBar";
 import { ResponsiveDonut } from "@/components/charts/ResponsiveDonut";
@@ -242,6 +243,12 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                 ref={(el) => (tabRefs.current["meta_ads"] = el)}
               >
                 Meta Ads
+              </TabsTrigger>
+              <TabsTrigger 
+                value="funding" 
+                ref={(el) => (tabRefs.current["funding"] = el)}
+              >
+                Funding
               </TabsTrigger>
             </TabsList>
           </div>
@@ -481,6 +488,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 
           <TabsContent value="meta_ads" className="space-y-6">
             <MetaAdsTab data={metaAdsData} />
+          </TabsContent>
+
+          <TabsContent value="funding" className="space-y-6">
+            <FundingTab fundingData={lead.funding_acquisition} />
           </TabsContent>
         </Tabs>
       </SheetContent>
