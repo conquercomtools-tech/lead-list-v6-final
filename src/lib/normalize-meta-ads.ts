@@ -104,7 +104,7 @@ function firstNonEmpty<T = string>(...vals: any[]): T | null {
 }
 
 export function normalizeMetaAds(raw: unknown): MetaAdsNormalized {
-  const { value: json, invalid: isString } = safeJsonWithFlag<any>(raw, null);
+  const { value: json } = safeJsonWithFlag<any>(raw, null);
   const arr: any[] = Array.isArray(json) ? json : [];
   // Handle sentinel cases like [{ type: "NO_ADS" }] gracefully:
   const filtered = arr.filter((x) => x && x.type !== "NO_ADS");
