@@ -52,7 +52,7 @@ export function useLeads(
         avatar_url:basic_info->>profile_picture_url,
         google_ads:googel_ads,
         meta_ads,
-        funding_acquisition:funding and acquisition
+        funding_acquisition:"funding and acquisition"
       `, { count: "exact" });
 
       // Apply search filter
