@@ -1,13 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variable validation
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://fbqgcxtxuuulerzvrazv.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZicWdjeHR4dXV1bGVyenZyYXp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzAwODcsImV4cCI6MjA3MzU0NjA4N30.T_aiFje1Ii3yUqTLWTaFrZLlCKImXwbaZRgUZmiyGks';
-const tableName = import.meta.env.VITE_SUPABASE_TABLE_NAME || '5LEAD TEST';
+export const TABLE =
+  (import.meta.env.VITE_SUPABASE_TABLE_NAME as string) || 'leads_viez';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
+const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? '';
 
-export const LEADS_TABLE = tableName;
+export const supabase = createClient(url, key, { auth: { persistSession: false } });
+
+export const LEADS_TABLE = TABLE;
 
 // Helper function to check if environment variables are properly set
 export const checkEnvVars = () => {
@@ -18,6 +19,43 @@ export const checkEnvVars = () => {
 };
 
 export type Lead = {
+  id?: number;
+  name?: string;
+  title?: string;
+  email?: string;
+  linkedin_url?: string;
+  linkedin_company_url?: string;
+  company?: string;
+  website?: string;
+  domain?: string;
+  industry?: string;
+  country?: string;
+  city?: string;
+  employees?: number;
+  revenue?: number | string | null;
+  funding_total?: number | null;
+  latest_funding_amount?: number | null;
+  last_raised_at?: string | null;
+  linkedin_posts?: any;
+  basic_info?: any;
+  company_linkedin_post?: any;
+  company_data?: any;
+  youtube_video?: any;
+  competitors?: any;
+  events?: any;
+  important_urls?: any;
+  meta_ads?: any;
+  googel_ads?: any;
+  google_ads?: any;
+  pricing?: any;
+  CRUNCHBASE?: any;
+  website_analytic_semrush?: any;
+  website_analytic_similarweb?: any;
+  Ev_Estimation?: any;
+  funding_acquisition?: any;
+  avatar_url?: string | null;
+  location?: string | null;
+  // Legacy fields kept for backwards compatibility
   'First Name'?: string;
   'Last Name'?: string;
   Title?: string;
@@ -41,32 +79,11 @@ export type Lead = {
   'Company State'?: string;
   'Company Country'?: string;
   Technologies?: string;
-  'Annual Revenue'?: string;
+  'Annual Revenue'?: string | number;
   'Total Funding'?: number;
   'Latest Funding Amount'?: number;
   'Latest Funding'?: string;
   'Last Raised At'?: string;
-  linkedin_posts?: any;
-  basic_info?: any;
-  company_linkedin_post?: any;
-  company_data?: any;
-  youtube_video?: any;
-  competitors?: any;
-  events?: string;
-  important_urls?: any;
-  avatar_url?: string | null;
-  'Facebook Url'?: string;
-  'Twitter Url'?: string;
-  Website?: string;
-  // Analytics fields
-  'website_analytic(similarweb)'?: any;
-  'website_analytic(semrush)'?: any;
-  CRUNCHBASE?: any;
-  google_ads?: any;
-  googel_ads?: any;
-  Ev_Estimation?: any;
-  meta_ads?: any;
-  funding_acquisition?: any;
   Keywords?: string;
 };
 

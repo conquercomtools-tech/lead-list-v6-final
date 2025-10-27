@@ -11,6 +11,9 @@ import { getInitials } from "@/lib/initials";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { hasJsonItems } from "@/lib/metrics";
+import { parseDomainFromUrl } from "@/lib/normalize";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -227,118 +230,177 @@ export function LeadsTable({
             </tr>
           </thead>
           <tbody>
-            {leads.map((lead, index) => (
-              <tr
-                key={index}
-                className="border-b border-border/10 hover:bg-muted/5 cursor-pointer transition-smooth"
-                onClick={() => onLeadClick(lead)}
-              >
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar 
-                      src={lead.avatar_url}
-                      alt={`${lead['First Name'] ?? ''} ${lead['Last Name'] ?? ''}`.trim() || lead.Company || 'Lead'}
-                      initialsText={getInitials(lead['First Name'], lead['Last Name'], lead.Company)}
-                      size="sm"
-                    />
-                    <div>
-                      <div className="font-medium">
-                        {[lead['First Name'], lead['Last Name']].filter(Boolean).join(' ') || 'N/A'}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {lead['Person Linkedin Url'] && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-0 text-primary hover:bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(lead['Person Linkedin Url'], '_blank');
-                            }}
-                          >
-                            LinkedIn <ExternalLink className="ml-1 h-3 w-3" />
-                          </Button>
+            {leads.map((lead, index) => {
+              const nameParts = (lead.name ?? '').trim().split(/\s+/);
+              const derivedFirst = lead['First Name'] ?? (nameParts.length ? nameParts[0] : undefined);
+              const derivedLast = lead['Last Name'] ?? (nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined);
+              const displayName = lead.name || [lead['First Name'], lead['Last Name']].filter(Boolean).join(' ') || 'N/A';
+              const title = lead.title ?? lead.Title ?? 'N/A';
+              const companyName = lead.company ?? lead.Company ?? 'N/A';
+              const email = lead.email ?? lead.Email ?? '';
+              const linkedinUrl = lead.linkedin_url ?? lead['Person Linkedin Url'];
+              const companyLinkedIn = lead.linkedin_company_url ?? lead['Company Linkedin Url'];
+              const country = lead.country ?? lead.Country ?? lead['Company Country'];
+              const employees = lead.employees ?? lead['# Employees'];
+              const funding = lead.funding_total ?? lead['Total Funding'];
+              const revenue = lead.revenue ?? lead['Annual Revenue'];
+              const computedDomain = lead.domain || parseDomainFromUrl(lead.website ?? lead.Website ?? undefined);
+              const websiteHref = computedDomain ? `https://${computedDomain}` : (lead.website ?? lead.Website ?? '');
+              const websiteLabel = computedDomain ?? lead.website ?? lead.Website ?? '';
+              const flags = {
+                linkedin: hasJsonItems(lead.linkedin_posts) || hasJsonItems(lead.company_linkedin_post),
+                youtube: hasJsonItems(lead.youtube_video),
+                competitors: hasJsonItems(lead.competitors),
+                googleAds: hasJsonItems(lead.google_ads ?? lead.googel_ads),
+                metaAds: hasJsonItems(lead.meta_ads),
+                similarweb: hasJsonItems(lead.website_analytic_similarweb ?? (lead as any)?.['website_analytic(similarweb)']),
+                semrush: hasJsonItems(lead.website_analytic_semrush ?? (lead as any)?.['website_analytic(semrush)']),
+              } as const;
+              const flagLabels: Record<keyof typeof flags, string> = {
+                linkedin: 'LinkedIn',
+                youtube: 'YouTube',
+                competitors: 'Competitors',
+                googleAds: 'Google Ads',
+                metaAds: 'Meta Ads',
+                similarweb: 'Similarweb',
+                semrush: 'SEMrush',
+              };
+              const activeFlags = (Object.keys(flags) as (keyof typeof flags)[]).filter((key) => flags[key]);
+
+              return (
+                <tr
+                  key={index}
+                  className="border-b border-border/10 hover:bg-muted/5 cursor-pointer transition-smooth"
+                  onClick={() => onLeadClick(lead)}
+                >
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        src={lead.avatar_url ?? undefined}
+                        alt={displayName || companyName || 'Lead'}
+                        initialsText={getInitials(derivedFirst, derivedLast, companyName)}
+                        size="sm"
+                      />
+                      <div>
+                        <div className="font-medium">{displayName}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {linkedinUrl && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto p-0 text-primary hover:bg-transparent"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(linkedinUrl, '_blank');
+                              }}
+                            >
+                              LinkedIn <ExternalLink className="ml-1 h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                        {activeFlags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {activeFlags.map((key) => (
+                              <Badge key={key} variant="outline" className="bg-white/5 border-white/15 text-[10px] uppercase tracking-wide">
+                                {flagLabels[key]}
+                              </Badge>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="text-sm">{lead.Title || 'N/A'}</div>
-                </td>
-                <td className="p-4">
-                  <div className="font-medium">{lead.Company || 'N/A'}</div>
-                  {lead['Company Linkedin Url'] && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto p-0 text-xs text-primary hover:bg-transparent"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(lead['Company Linkedin Url'], '_blank');
-                      }}
-                    >
-                      Company Page <ExternalLink className="ml-1 h-3 w-3" />
-                    </Button>
-                  )}
-                </td>
-                <td className="p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      {lead.Email && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-0 text-sm font-medium hover:bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(`mailto:${lead.Email}`, '_blank');
-                            }}
-                          >
-                            <Mail className="mr-1 h-3 w-3" />
-                            {lead.Email}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyToClipboard(lead.Email!, 'Email');
-                            }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
-                      <StatusBadge status={lead['Email Status']} />
+                  </td>
+                  <td className="p-4">
+                    <div className="text-sm">{title}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="font-medium">{companyName}</div>
+                    {companyLinkedIn && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto p-0 text-xs text-primary hover:bg-transparent"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(companyLinkedIn, '_blank');
+                        }}
+                      >
+                        Company Page <ExternalLink className="ml-1 h-3 w-3" />
+                      </Button>
+                    )}
+                    {websiteLabel && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto p-0 text-xs text-primary hover:bg-transparent"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const href = websiteHref.startsWith('http') ? websiteHref : `https://${websiteHref}`;
+                          window.open(href, '_blank');
+                        }}
+                      >
+                        {websiteLabel.replace(/^https?:\/\//i, '') || 'Website'} <ExternalLink className="ml-1 h-3 w-3" />
+                      </Button>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        {email && (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto p-0 text-sm font-medium hover:bg-transparent"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`mailto:${email}`, '_blank');
+                              }}
+                            >
+                              <Mail className="mr-1 h-3 w-3" />
+                              {email}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(email, 'Email');
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                        <StatusBadge status={lead['Email Status']} />
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="flex items-center gap-2">
-                    <span>{getCountryFlag(lead.Country)}</span>
-                    <span className="text-sm">{lead.Country || 'N/A'}</span>
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="text-sm font-medium">
-                    {formatNumber(lead['# Employees'])}
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="text-sm font-medium">
-                    {formatCurrency(lead['Total Funding'])}
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="text-sm font-medium">
-                    {formatCurrency(lead['Annual Revenue'])}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <span>{getCountryFlag(country)}</span>
+                      <span className="text-sm">{country || 'N/A'}</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-sm font-medium">
+                      {formatNumber(employees)}
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-sm font-medium">
+                      {formatCurrency(funding ?? 0)}
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-sm font-medium">
+                      {formatCurrency(revenue ?? 0)}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
