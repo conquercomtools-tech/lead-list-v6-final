@@ -10,11 +10,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Copy, ExternalLink, Phone, Mail, MapPin, ChevronDown, Calendar, TrendingUp, Users, DollarSign, Building, ChevronLeft, ChevronRight, Globe, Rocket, LineChart, Wallet, Building2, FlaskConical, Target, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Lead, formatCurrency, formatNumber, getCountryFlag } from "@/lib/supabase";
-import { 
-  normalizeLinkedInPosts, 
+import {
+  normalizeLinkedInPosts,
   normalizeLinkedInPostsFromMessages,
-  normalizeBasicInfo, 
-  normalizeCompanyData, 
+  normalizeBasicInfo,
+  normalizeCompanyData,
   normalizeCompanyPosts,
   normalizeCompanyDataFromMessages,
   aggregateCompanySnapshot,
@@ -23,7 +23,9 @@ import {
   parseEventsText,
   normalizeImportantUrls,
   money,
-  fmtDate
+  fmtDate,
+  safeJson,
+  parseDomainFromUrl
 } from "@/lib/normalize";
 import { 
   normalizeWebAnalytics, 
@@ -52,6 +54,7 @@ import {
 import { EVEstimatorTab } from "@/components/dashboard/ev-estimator-tab";
 import { MetaAdsTab } from "@/components/dashboard/meta-ads-tab";
 import { FundingTab } from "@/components/dashboard/funding-tab";
+import { JsonList } from "@/components/JsonBlocks";
 import { ResponsiveLines } from "@/components/charts/ResponsiveLines";
 import { ResponsiveBar } from "@/components/charts/ResponsiveBar";
 import { ResponsiveDonut } from "@/components/charts/ResponsiveDonut";
@@ -85,8 +88,30 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   };
 
   // Prepare data for display
-  const fullName = [lead?.['First Name'], lead?.['Last Name']].filter(Boolean).join(' ') || 'Unknown';
-  
+  const nameParts = (lead.name ?? '').trim().split(/\s+/);
+  const derivedFirst = lead['First Name'] ?? (nameParts.length ? nameParts[0] : undefined);
+  const derivedLast = lead['Last Name'] ?? (nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined);
+  const fullName = lead.name || [lead?.['First Name'], lead?.['Last Name']].filter(Boolean).join(' ') || 'Unknown';
+  const displayTitle = lead.title ?? lead.Title ?? 'No title';
+  const displayCompany = lead.company ?? lead.Company ?? 'No company';
+  const industry = lead.industry ?? lead.Industry ?? null;
+  const email = lead.email ?? lead.Email ?? null;
+  const secondaryEmail = lead['Secondary Email'] ?? null;
+  const companyPhone = lead['Company Phone'] ?? null;
+  const personLinkedIn = lead.linkedin_url ?? lead['Person Linkedin Url'] ?? null;
+  const companyLinkedIn = lead.linkedin_company_url ?? lead['Company Linkedin Url'] ?? null;
+  const countryValue = lead.country ?? lead.Country ?? lead['Company Country'] ?? null;
+  const employeesValue = lead.employees ?? lead['# Employees'] ?? null;
+  const revenueValue = lead.revenue ?? lead['Annual Revenue'] ?? null;
+  const fundingValue = lead.funding_total ?? lead['Total Funding'] ?? null;
+  const latestFundingValue = lead.latest_funding_amount ?? lead['Latest Funding Amount'] ?? null;
+  const locationCity = lead.city ?? lead.City ?? null;
+  const locationState = lead.State ?? null;
+  const locationCountry = countryValue;
+  const computedDomain = lead.domain || parseDomainFromUrl(lead.website ?? (lead.Website as string | undefined));
+  const websiteHref = computedDomain ? `https://${computedDomain}` : (lead.website ?? lead.Website ?? '');
+  const websiteLabel = computedDomain ?? lead.website ?? lead.Website ?? '';
+
   // Normalize JSONB fields
   const linkedinPosts = normalizeLinkedInPostsFromMessages(lead?.linkedin_posts);
   const basicInfo = normalizeBasicInfo(lead?.basic_info);
@@ -97,10 +122,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
   const competitorsData = normalizeCompetitors(lead?.competitors);
   const eventsData = parseEventsText(lead?.events);
   const importantUrls = normalizeImportantUrls(lead?.important_urls);
-  
+
   // Analytics data
-  const similarwebData = normalizeWebAnalytics(lead?.['website_analytic(similarweb)']);
-  const semrushData = normalizeWebAnalytics(lead?.['website_analytic(semrush)']);
+  const similarwebData = normalizeWebAnalytics(lead?.website_analytic_similarweb ?? lead?.['website_analytic(similarweb)']);
+  const semrushData = normalizeWebAnalytics(lead?.website_analytic_semrush ?? lead?.['website_analytic(semrush)']);
   const crunchbaseData = normalizeCrunchbase(lead?.CRUNCHBASE);
   const googleAdsData = normalizeGoogleAds(lead?.google_ads ?? lead?.googel_ads);
   const evEstimationData = normalizeEVEstimation(lead?.Ev_Estimation);
@@ -112,25 +137,25 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
         <SheetHeader className="pb-6 border-b border-border/20">
           <div className="flex items-start gap-4">
             {basicInfo.profile_picture_url ? (
-              <img 
-                src={basicInfo.profile_picture_url} 
+              <img
+                src={basicInfo.profile_picture_url}
                 alt="Profile"
                 className="w-20 h-20 rounded-full object-cover border border-white/10 shadow-lg"
               />
             ) : (
-              <AvatarInitials 
-                initials={(lead?.['First Name']?.[0] || '') + (lead?.['Last Name']?.[0] || '') || lead?.Company?.[0] || '?'}
+              <AvatarInitials
+                initials={(derivedFirst?.[0] || '') + (derivedLast?.[0] || '') || displayCompany?.[0] || '?'}
                 size="lg"
                 className="w-20 h-20"
               />
             )}
             <div className="flex-1">
               <SheetTitle className="text-2xl gradient-text">{fullName}</SheetTitle>
-              <p className="text-lg text-muted-foreground">{lead?.Title || 'No title'}</p>
-              <p className="text-lg font-medium">{lead?.Company || 'No company'}</p>
+              <p className="text-lg text-muted-foreground">{displayTitle}</p>
+              <p className="text-lg font-medium">{displayCompany}</p>
               <div className="flex gap-2 mt-2">
                 {lead?.['Email Status'] && <StatusBadge status={lead['Email Status']} />}
-                {lead?.Industry && <Badge variant="outline" className="glass">{lead.Industry}</Badge>}
+                {industry && <Badge variant="outline" className="glass">{industry}</Badge>}
               </div>
             </div>
           </div>
@@ -200,29 +225,29 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
               >
                 Search
               </TabsTrigger>
-              <TabsTrigger 
-                value="important-urls" 
-                ref={(el) => (tabRefs.current["important-urls"] = el)}
+              <TabsTrigger
+                value="important"
+                ref={(el) => (tabRefs.current["important"] = el)}
               >
                 Important URLs
               </TabsTrigger>
-              <TabsTrigger 
-                value="analytics_sw" 
-                ref={(el) => (tabRefs.current["analytics_sw"] = el)}
+              <TabsTrigger
+                value="similarweb"
+                ref={(el) => (tabRefs.current["similarweb"] = el)}
               >
                 <span className="hidden md:inline">Analytics (Similarweb)</span>
                 <span className="md:hidden">Analytics (SW)</span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="analytics_semrush" 
-                ref={(el) => (tabRefs.current["analytics_semrush"] = el)}
+              <TabsTrigger
+                value="semrush"
+                ref={(el) => (tabRefs.current["semrush"] = el)}
               >
                 <span className="hidden md:inline">Analytics (SEMrush)</span>
                 <span className="md:hidden">Analytics (SE)</span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="googleads" 
-                ref={(el) => (tabRefs.current["googleads"] = el)}
+              <TabsTrigger
+                value="gads"
+                ref={(el) => (tabRefs.current["gads"] = el)}
               >
                 Google Ads
               </TabsTrigger>
@@ -238,9 +263,9 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
               >
                 EV Estimator
               </TabsTrigger>
-              <TabsTrigger 
-                value="meta_ads" 
-                ref={(el) => (tabRefs.current["meta_ads"] = el)}
+              <TabsTrigger
+                value="meta"
+                ref={(el) => (tabRefs.current["meta"] = el)}
               >
                 Meta Ads
               </TabsTrigger>
@@ -311,20 +336,20 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                 Contact Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {lead?.Email && (
+                {email && (
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Primary Email</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <a href={`mailto:${lead.Email}`} className="text-primary hover:underline">
-                        {lead.Email}
+                      <a href={`mailto:${email}`} className="text-primary hover:underline">
+                        {email}
                       </a>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => copyToClipboard(lead.Email!)}
+                        onClick={() => copyToClipboard(email)}
                         className="h-6 w-6 p-0"
                       >
                         <Copy className="h-3 w-3" />
@@ -332,21 +357,21 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                     </div>
                   </div>
                 )}
-                
-                {lead?.['Secondary Email'] && (
+
+                {secondaryEmail && (
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Secondary Email</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <a href={`mailto:${lead['Secondary Email']}`} className="text-primary hover:underline">
-                        {lead['Secondary Email']}
+                      <a href={`mailto:${secondaryEmail}`} className="text-primary hover:underline">
+                        {secondaryEmail}
                       </a>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => copyToClipboard(lead['Secondary Email']!)}
+                        onClick={() => copyToClipboard(secondaryEmail)}
                         className="h-6 w-6 p-0"
                       >
                         <Copy className="h-3 w-3" />
@@ -355,20 +380,20 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                   </div>
                 )}
 
-                {lead?.['Company Phone'] && (
+                {companyPhone && (
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Company Phone</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <a href={`tel:${lead['Company Phone']}`} className="text-primary hover:underline">
-                        {lead['Company Phone']}
+                      <a href={`tel:${companyPhone}`} className="text-primary hover:underline">
+                        {companyPhone}
                       </a>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => copyToClipboard(lead['Company Phone']!)}
+                        onClick={() => copyToClipboard(companyPhone)}
                         className="h-6 w-6 p-0"
                       >
                         <Copy className="h-3 w-3" />
@@ -377,7 +402,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                   </div>
                 )}
 
-                {lead?.['Person Linkedin Url'] && (
+                {personLinkedIn && (
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
                     <div className="flex items-center gap-2">
                       <ExternalLink className="h-4 w-4 text-muted-foreground" />
@@ -386,7 +411,7 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => window.open(lead['Person Linkedin Url'], '_blank')}
+                      onClick={() => window.open(personLinkedIn, '_blank')}
                       className="text-primary hover:underline"
                     >
                       View Profile
@@ -395,7 +420,47 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                   </div>
                 )}
 
-                {(lead?.City || lead?.State || lead?.Country) && (
+                {companyLinkedIn && (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <Building className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Company LinkedIn</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(companyLinkedIn, '_blank')}
+                      className="text-primary hover:underline"
+                    >
+                      View Company
+                      <ExternalLink className="ml-1 h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+
+                {websiteLabel && (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Website</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-primary hover:underline"
+                      onClick={() => {
+                        if (!websiteHref) return;
+                        const href = websiteHref.startsWith('http') ? websiteHref : `https://${websiteHref}`;
+                        window.open(href, '_blank');
+                      }}
+                    >
+                      {websiteLabel.replace(/^https?:\/\//i, '')}
+                      <ExternalLink className="ml-1 h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+
+                {(locationCity || locationState || locationCountry) && (
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -403,10 +468,10 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm">
-                        {[lead?.City, lead?.State, lead?.Country].filter(Boolean).join(', ')}
+                        {[locationCity, locationState, locationCountry].filter(Boolean).join(', ')}
                       </span>
-                      {lead?.Country && (
-                        <span className="text-lg">{getCountryFlag(lead.Country)}</span>
+                      {countryValue && (
+                        <span className="text-lg">{getCountryFlag(countryValue)}</span>
                       )}
                     </div>
                   </div>
@@ -418,25 +483,25 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <GlassCard className="p-4 text-center">
                 <Users className="h-8 w-8 text-primary mx-auto mb-2" />
-                <div className="text-2xl font-bold">{formatNumber(lead?.['# Employees'])}</div>
+                <div className="text-2xl font-bold">{formatNumber(employeesValue ?? 0)}</div>
                 <div className="text-sm text-muted-foreground">Employees</div>
               </GlassCard>
-              
+
               <GlassCard className="p-4 text-center">
                 <TrendingUp className="h-8 w-8 text-primary mx-auto mb-2" />
-                <div className="text-2xl font-bold">{formatCurrency(lead?.['Annual Revenue'])}</div>
+                <div className="text-2xl font-bold">{formatCurrency(revenueValue ?? 0)}</div>
                 <div className="text-sm text-muted-foreground">Annual Revenue</div>
               </GlassCard>
-              
+
               <GlassCard className="p-4 text-center">
                 <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
-                <div className="text-2xl font-bold">{formatCurrency(lead?.['Total Funding'])}</div>
+                <div className="text-2xl font-bold">{formatCurrency(fundingValue ?? 0)}</div>
                 <div className="text-sm text-muted-foreground">Total Funding</div>
               </GlassCard>
-              
+
               <GlassCard className="p-4 text-center">
                 <DollarSign className="h-8 w-8 text-primary mx-auto mb-2" />
-                <div className="text-2xl font-bold">{formatCurrency(lead?.['Latest Funding Amount'])}</div>
+                <div className="text-2xl font-bold">{formatCurrency(latestFundingValue ?? 0)}</div>
                 <div className="text-sm text-muted-foreground">Latest Funding</div>
               </GlassCard>
             </div>
@@ -456,26 +521,46 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
 
           <TabsContent value="competitors" className="space-y-6">
             <CompetitorsTab competitorsData={competitorsData} />
+            <GlassCard className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">Raw competitors data</h3>
+              <JsonList data={safeJson(lead?.competitors, [])} />
+            </GlassCard>
           </TabsContent>
 
           <TabsContent value="search" className="space-y-6">
             <SearchTab eventsData={eventsData} />
           </TabsContent>
 
-          <TabsContent value="important-urls" className="space-y-6">
+          <TabsContent value="important" className="space-y-6">
             <ImportantUrlsTab importantUrls={importantUrls} />
+            <GlassCard className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">Raw important URLs</h3>
+              <JsonList data={safeJson(lead?.important_urls, [])} />
+            </GlassCard>
           </TabsContent>
 
-          <TabsContent value="analytics_sw" className="space-y-6">
+          <TabsContent value="similarweb" className="space-y-6">
             <AnalyticsTab data={similarwebData} title="Similarweb" />
+            <GlassCard className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">Similarweb JSON</h3>
+              <JsonList data={safeJson(lead?.website_analytic_similarweb ?? lead?.['website_analytic(similarweb)'], {})} />
+            </GlassCard>
           </TabsContent>
 
-          <TabsContent value="analytics_semrush" className="space-y-6">
+          <TabsContent value="semrush" className="space-y-6">
             <AnalyticsTab data={semrushData} title="SEMrush" />
+            <GlassCard className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">SEMrush JSON</h3>
+              <JsonList data={safeJson(lead?.website_analytic_semrush ?? lead?.['website_analytic(semrush)'], {})} />
+            </GlassCard>
           </TabsContent>
 
-          <TabsContent value="googleads" className="space-y-6">
+          <TabsContent value="gads" className="space-y-6">
             <GoogleAdsTab data={googleAdsData} />
+            <GlassCard className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">Google Ads JSON</h3>
+              <JsonList data={safeJson(lead?.google_ads ?? lead?.googel_ads, [])} />
+            </GlassCard>
           </TabsContent>
 
           <TabsContent value="crunchbase" className="space-y-6">
@@ -486,12 +571,16 @@ export function LeadDrawer({ lead, open, onClose }: LeadDrawerProps) {
             <EVEstimatorTab data={evEstimationData} />
           </TabsContent>
 
-          <TabsContent value="meta_ads" className="space-y-6">
+          <TabsContent value="meta" className="space-y-6">
             <MetaAdsTab data={metaAdsData} />
+            <GlassCard className="p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">Meta Ads JSON</h3>
+              <JsonList data={safeJson(lead?.meta_ads, [])} />
+            </GlassCard>
           </TabsContent>
 
           <TabsContent value="funding" className="space-y-6">
-            <FundingTab fundingData={lead.funding_acquisition} />
+            <FundingTab fundingData={lead.funding_acquisition ?? (lead as any)?.['funding and acquisition']} />
           </TabsContent>
         </Tabs>
       </SheetContent>

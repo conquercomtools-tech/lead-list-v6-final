@@ -29,10 +29,11 @@ export function ChartsPanel({ leads, isLoading }: ChartsPanelProps) {
   // Prepare funding data
   const getFundingData = () => {
     const companyFunding = leads
-      .filter(lead => lead.Company && lead['Total Funding'] && lead['Total Funding'] > 0)
+      .filter(lead => (lead.company ?? lead.Company) && (lead.funding_total ?? lead['Total Funding']) && (Number(lead.funding_total ?? lead['Total Funding']) || 0) > 0)
       .reduce((acc, lead) => {
-        const company = lead.Company!;
-        const funding = lead['Total Funding']!;
+        const company = (lead.company ?? lead.Company) as string;
+        const rawFunding = lead.funding_total ?? lead['Total Funding'] ?? 0;
+        const funding = typeof rawFunding === 'string' ? parseFloat(rawFunding.replace(/[^0-9.-]/g, '')) : Number(rawFunding) || 0;
         if (!acc[company] || acc[company] < funding) {
           acc[company] = funding;
         }
@@ -61,11 +62,12 @@ export function ChartsPanel({ leads, isLoading }: ChartsPanelProps) {
     };
 
     leads.forEach(lead => {
-      if (lead['Annual Revenue']) {
-        const revenue = typeof lead['Annual Revenue'] === 'string' 
-          ? parseFloat(lead['Annual Revenue'].replace(/[^0-9.-]/g, ''))
-          : lead['Annual Revenue'];
-        
+      const source = lead.revenue ?? lead['Annual Revenue'];
+      if (source) {
+        const revenue = typeof source === 'string'
+          ? parseFloat(source.replace(/[^0-9.-]/g, ''))
+          : Number(source);
+
         if (!isNaN(revenue)) {
           if (revenue < 1000000) revenueRanges['<$1M']++;
           else if (revenue < 10000000) revenueRanges['$1M-$10M']++;
@@ -93,8 +95,9 @@ export function ChartsPanel({ leads, isLoading }: ChartsPanelProps) {
     };
 
     leads.forEach(lead => {
-      if (lead['# Employees']) {
-        const employees = lead['# Employees'];
+      const employeesSource = lead.employees ?? lead['# Employees'];
+      if (employeesSource) {
+        const employees = employeesSource;
         if (employees <= 10) employeeRanges['1-10']++;
         else if (employees <= 50) employeeRanges['11-50']++;
         else if (employees <= 200) employeeRanges['51-200']++;

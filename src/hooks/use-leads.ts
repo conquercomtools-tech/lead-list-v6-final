@@ -2,6 +2,49 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase, LEADS_TABLE, Lead } from "@/lib/supabase";
 
+const SELECT = `
+  id,
+  "Name" as name,
+  "Title" as title,
+  "Email" as email,
+  "Person Linkedin Url" as linkedin_url,
+  "Company Linkedin Url" as linkedin_company_url,
+
+  "Company" as company,
+  "Website" as website,
+  "Industry" as industry,
+  "Company Country" as country,
+  location as city,
+  "# Employees" as employees,
+  "Annual Revenue" as revenue,
+
+  "Total Funding" as funding_total,
+  "Latest Funding Amount" as latest_funding_amount,
+  "Last Raised At" as last_raised_at,
+
+  linkedin_posts,
+  basic_info,
+  avatar_url:basic_info->>profile_picture_url,
+  company_linkedin_post,
+  company_data,
+  youtube_video,
+  events,
+  important_urls,
+  competitors,
+
+  meta_ads,
+  googel_ads as google_ads,
+
+  "funding and acquisition" as funding_acquisition,
+  pricing,
+  "CRUNCHBASE" as CRUNCHBASE,
+  "website_analytic(semrush)" as website_analytic_semrush,
+  "website_analytic(similarweb)" as website_analytic_similarweb,
+  "Ev_Estimation" as Ev_Estimation,
+  domain,
+  "Email Status"
+`;
+
 export interface FilterState {
   search: string;
   emailStatus: string;
@@ -47,20 +90,20 @@ export function useLeads(
   } = useQuery({
     queryKey: ["leads", page, pageSize, sortColumn, sortDirection, debouncedFilters],
     queryFn: async () => {
-      let query = supabase.from(LEADS_TABLE).select(`
-        *,
-        avatar_url:basic_info->>profile_picture_url,
-        google_ads:googel_ads,
-        meta_ads,
-        funding_acquisition:"funding and acquisition"
-      `, { count: "exact" });
+      let query = supabase.from(LEADS_TABLE).select(SELECT, { count: "exact" });
 
       // Apply search filter
       if (debouncedFilters.search) {
         const searchTerm = `%${debouncedFilters.search}%`;
-        query = query.or(
-          `"First Name".ilike.${searchTerm},"Last Name".ilike.${searchTerm},"Company".ilike.${searchTerm},"Title".ilike.${searchTerm},"Email".ilike.${searchTerm}`
-        );
+        const searchColumns = [
+          '"Name"',
+          '"Company"',
+          '"Title"',
+          '"Email"',
+          '"First Name"',
+          '"Last Name"'
+        ];
+        query = query.or(searchColumns.map((col) => `${col}.ilike.${searchTerm}`).join(','));
       }
 
       // Apply status filters
@@ -73,7 +116,7 @@ export function useLeads(
       }
 
       if (debouncedFilters.country) {
-        query = query.eq("Country", debouncedFilters.country);
+        query = query.eq('"Company Country"', debouncedFilters.country);
       }
 
       // Apply range filters
@@ -92,11 +135,11 @@ export function useLeads(
       // Apply sorting
       if (sortColumn) {
         const columnMap: Record<string, string> = {
-          name: '"First Name"',
-          title: "Title",
-          company: "Company",
-          email: "Email",
-          country: "Country",
+          name: '"Name"',
+          title: '"Title"',
+          company: '"Company"',
+          email: '"Email"',
+          country: '"Company Country"',
           employees: '"# Employees"',
           funding: '"Total Funding"',
           revenue: '"Annual Revenue"',
@@ -132,16 +175,16 @@ export function useLeads(
     queryFn: async () => {
       const { data, error } = await supabase
         .from(LEADS_TABLE)
-        .select('"Email Status", Industry, Country')
+        .select('"Email Status", Industry, "Company Country"')
         .not('"Email Status"', 'is', null)
         .not('Industry', 'is', null)
-        .not('Country', 'is', null);
+        .not('"Company Country"', 'is', null);
 
       if (error) throw error;
 
       const emailStatuses = [...new Set(data.map(item => item['Email Status']).filter(Boolean))];
       const industries = [...new Set(data.map(item => item.Industry).filter(Boolean))];
-      const countries = [...new Set(data.map(item => item.Country).filter(Boolean))];
+      const countries = [...new Set(data.map(item => item['Company Country']).filter(Boolean))];
 
       return {
         emailStatuses: emailStatuses.sort(),
@@ -165,16 +208,18 @@ export function useLeads(
     const verifiedEmailsPercent = totalLeads > 0 ? (verifiedEmails / totalLeads) * 100 : 0;
 
     const totalFunding = leadsData.leads.reduce((sum, lead) => {
-      const funding = lead['Total Funding'] || 0;
-      return sum + funding;
+      const value = lead.funding_total ?? lead['Total Funding'] ?? 0;
+      const funding = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : Number(value) || 0;
+      return sum + (isNaN(funding) ? 0 : funding);
     }, 0);
 
     const revenueValues = leadsData.leads
       .map(lead => {
-        if (!lead['Annual Revenue']) return 0;
-        const revenue = typeof lead['Annual Revenue'] === 'string' 
-          ? parseFloat(lead['Annual Revenue'].replace(/[^0-9.-]/g, ''))
-          : lead['Annual Revenue'];
+        const source = lead.revenue ?? lead['Annual Revenue'];
+        if (!source) return 0;
+        const revenue = typeof source === 'string'
+          ? parseFloat(source.replace(/[^0-9.-]/g, ''))
+          : Number(source);
         return isNaN(revenue) ? 0 : revenue;
       })
       .filter(v => v > 0);
@@ -184,7 +229,7 @@ export function useLeads(
       : 0;
 
     const employeeValues = leadsData.leads
-      .map(lead => lead['# Employees'] || 0)
+      .map(lead => lead.employees ?? lead['# Employees'] ?? 0)
       .filter(v => v > 0)
       .sort((a, b) => a - b);
 

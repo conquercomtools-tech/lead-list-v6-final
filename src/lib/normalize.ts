@@ -1,8 +1,45 @@
-export function safeJson<T=unknown>(val:any, fallback:T):T{
+export function safeJson<T = unknown>(val: any, fallback: T): T {
   if (val == null) return fallback;
   if (typeof val === 'object') return val as T;
-  if (typeof val === 'string') { try { return JSON.parse(val) as T; } catch { return fallback; } }
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val) as T;
+    } catch {
+      return fallback;
+    }
+  }
   return fallback;
+}
+
+export function safeJsonWithFlag<T = unknown>(val: any, fallback: T): { value: T; invalid: boolean } {
+  if (val == null) return { value: fallback, invalid: false };
+  if (typeof val === 'object') return { value: val as T, invalid: false };
+  if (typeof val === 'string') {
+    try {
+      return { value: JSON.parse(val) as T, invalid: false };
+    } catch {
+      return { value: fallback, invalid: true };
+    }
+  }
+  return { value: fallback, invalid: false };
+}
+
+export const prettyMoney = (n?: number | null): string => {
+  if (n == null || isNaN(Number(n))) return 'N/A';
+  const v = Number(n);
+  if (Math.abs(v) >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
+  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
+  return `$${v.toLocaleString()}`;
+};
+
+export function parseDomainFromUrl(url?: string | null): string | undefined {
+  if (!url) return;
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return;
+  }
 }
 
 export const toArray = (v:any): string[] => {
@@ -102,16 +139,6 @@ export function normalizeBasicInfo(src:any){
     current_company_url: o?.current_company_url ?? '',
     profile_picture_url: o?.profile_picture_url ?? o?.profile_image ?? o?.photo ?? null,
   };
-}
-
-export function safeJsonWithFlag<T = unknown>(val: any, fallback: T): { value: T; invalid: boolean } {
-  if (val == null) return { value: fallback, invalid: false };
-  if (typeof val === 'object') return { value: val as T, invalid: false };
-  if (typeof val === 'string') {
-    try { return { value: JSON.parse(val) as T, invalid: false }; }
-    catch { return { value: fallback, invalid: true }; }
-  }
-  return { value: fallback, invalid: false };
 }
 
 // ---------- COMPANY: array of items with message.content ----------
