@@ -1,10 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const TABLE =
-  (import.meta.env.VITE_SUPABASE_TABLE_NAME as string) || 'leads_viez';
+const DEFAULT_TABLE = '5LEAD TEST_duplicate';
+const DEFAULT_URL = 'https://fbqgcxtxuuulerzvrazv.supabase.co';
+const DEFAULT_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZicWdjeHR4dXV1bGVyenZyYXp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzAwODcsImV4cCI6MjA3MzU0NjA4N30.T_aiFje1Ii3yUqTLWTaFrZLlCKImXwbaZRgUZmiyGks';
 
-const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
-const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? '';
+export const TABLE =
+  (import.meta.env.VITE_SUPABASE_TABLE_NAME as string | undefined) || DEFAULT_TABLE;
+
+const url =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) || DEFAULT_URL;
+const key =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || DEFAULT_KEY;
 
 export const supabase = createClient(url, key, { auth: { persistSession: false } });
 
